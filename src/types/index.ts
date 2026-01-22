@@ -41,3 +41,183 @@ export type AxiosCancelToken = {
 
 // 通用响应类型复用
 export type BaseApiResponse<T = any> = ApiResponse<T>
+
+// 专利基础信息类型
+export interface PatentBase {
+  publicNum: string      // 公开号
+  title: string          // 标题
+  abstractText: string   // 摘要
+  applicant: string      // 申请人
+  inventor: string       // 发明人
+  ipc: string            // IPC分类
+  appliNum?: string      // 申请号
+  appliDate?: string     // 申请日
+  publicDate?: string    // 公布日
+  cpc?: string           // CPC分类
+  nec?: string           // NEC分类
+  legalStatus?: string   // 法律状态
+  latestLegalStatus?: string // 最新法律状态
+  status?: string        // 状态
+  type?: string          // 类型
+  applicantAddress?: string  // 申请人地址
+  patentee?: string      // 专利权人
+  patenteeAddress?: string   // 专利权人地址
+  agent?: string         // 代理机构/代理人
+  patentDetails?: string // 详情/全文
+}
+
+// 专利类别枚举
+export type PatentCategory = 'wind' | 'solar' | 'biomass' | 'hydrogen' | 'lilon'
+
+// 专利查询参数
+export interface PatentQueryParams {
+  category: PatentCategory
+  query?: string
+}
+
+// 专利创建/更新参数
+export interface PatentCreateUpdateParams extends PatentBase {
+  category: PatentCategory
+}
+
+// 专家信息类型
+export interface Expert {
+  id: number          // 专家ID
+  name: string        // 姓名
+  field: string       // 领域
+  expertise: string   // 专长
+  achievements?: string // 成果
+  contactInfo?: string  // 联系方式
+}
+
+// 专家查询参数
+export interface ExpertQueryParams {
+  query?: string
+}
+
+// 需求信息类型
+export interface Requirement {
+  id: number
+  title: string
+  description?: string
+  keywords?: string
+  techDirection?: string
+  cooperationMode?: string
+  status: string
+  createdDate: string
+}
+
+// 创建需求参数
+export interface CreateRequirementParams {
+  title: string
+  description?: string
+  keywords?: string
+  techDirection?: string
+  cooperationMode?: string
+}
+
+// 匹配专利结果类型
+export interface MatchedPatent {
+  category: PatentCategory
+  publicNum: string
+  title: string
+  applicant: string
+  inventor: string
+}
+
+// 匹配专家结果类型
+export interface MatchedExpert {
+  id: number
+  name: string
+  field: string
+}
+
+// 专利匹配持久化参数
+export interface PersistPatentMatchParams {
+  items: Array<{
+    patentCategory: PatentCategory
+    patentPublicNum: string
+    matchScore?: number
+    matchReason?: string
+  }>
+}
+
+// 专家匹配持久化参数
+export interface PersistExpertMatchParams {
+  items: Array<{
+    expertId: number
+    matchScore?: number
+    matchReason?: string
+  }>
+}
+
+// 转化成果信息类型
+export interface TransformationResult {
+  id: number
+  patentCategory: PatentCategory
+  patentPublicNum: string
+  expertId?: number
+  requirementId?: number
+  partnerOrgId?: number
+  description?: string
+  transformationDate?: string
+  status: string
+  benefitAmount?: number
+}
+
+// 创建转化成果参数
+export interface CreateTransformationParams {
+  patentCategory: PatentCategory
+  patentPublicNum: string
+  expertId?: number
+  requirementId?: number
+  partnerOrgId?: number
+  description?: string
+  transformationDate?: string
+  status?: string
+  benefitAmount?: number
+}
+
+// 专利价值评估报告类型
+export interface ValuationReport {
+  id: number
+  patentCategory: PatentCategory
+  patentPublicNum: string
+  reportTitle: string
+  valuationAmount: number
+  currency: string
+  valuationDate: string
+  modelVersion: string
+  scoreDetails?: {
+    technologicalInnovation: number
+    marketPotential: number
+    legalStatus: number
+    economicValue: number
+  }
+  evaluationMethod: string
+  evaluator: string
+  status: string
+  reportContent: string
+  createdAt: string
+  updatedAt?: string
+}
+
+// 生成评估报告参数
+export interface GenerateValuationParams {
+  patentCategory: PatentCategory
+  patentPublicNum: string
+  modelVersion?: string
+}
+
+// 查询评估报告列表参数
+export interface QueryValuationParams {
+  patentCategory: PatentCategory
+  patentPublicNum: string
+}
+
+// 更新评估模型参数
+export interface UpdateValuationParam {
+  key: string
+  value: string | number | boolean
+  description?: string
+}

@@ -6,7 +6,7 @@ import axios, {
 } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '../router'
-import type { ApiResponse, RequestConfig } from '../types'
+import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, GenerateValuationParams, MatchedExpert, MatchedPatent, PatentBase, PatentCategory, PatentCreateUpdateParams, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateValuationParam, ValuationReport } from '../types'
 
 // 取消请求token缓存
 const cancelTokenMap = new Map<string, CancelTokenSource>()
@@ -173,6 +173,90 @@ class ApiService {
     config = { ...config, noCache: true }
     return this.axiosInstance.delete(url, { params, ...config })
   }
+
+  // 查询专利（按类别）
+  getPatentsByCategory(category: PatentCategory, query?: string) {
+    const params: { category: PatentCategory; query?: string } = { category }
+    if (query) {
+      params.query = query
+    }
+    return this.get<PatentBase[]>('/patents', params)
+  }
+
+  // 创建/更新专利
+  createOrUpdatePatent(params: PatentCreateUpdateParams) {
+    const { category, ...data } = params
+    return this.post<PatentBase>('/patents', data, { params: { category } })
+  }
+
+  // 获取单条专利
+  getPatentByCategoryAndNum(category: PatentCategory, publicNum: string) {
+    return this.get<PatentBase>(`/patents/${category}/${publicNum}`)
+  }
+
+  // 查询专家
+  getExperts(query?: string) {
+    const params: { query?: string } = {}
+    if (query) {
+      params.query = query
+    }
+    return this.get<Expert[]>('/experts', params)
+  }
+
+  // 创建专家
+  createExpert(expertData: Omit<Expert, 'id'>) {
+    return this.post<Expert>('/experts', expertData)
+  }
+
+  // 创建需求
+  createRequirement(requirementData: CreateRequirementParams) {
+    return this.post<Requirement>('/requirements', requirementData)
+  }
+
+  // 需求匹配专利
+  matchPatentsForRequirement(requirementId: number) {
+    return this.get<MatchedPatent[]>(`/requirements/${requirementId}/match-patents`)
+  }
+
+  // 需求匹配专家
+  matchExpertsForRequirement(requirementId: number) {
+    return this.get<MatchedExpert[]>(`/requirements/${requirementId}/match-experts`)
+  }
+
+  // 保存专利匹配结果
+  persistPatentMatches(requirementId: number, params: PersistPatentMatchParams) {
+    return this.post(`/requirements/${requirementId}/match-patents/persist`, params)
+  }
+
+  // 保存专家匹配结果
+  persistExpertMatches(requirementId: number, params: PersistExpertMatchParams) {
+    return this.post(`/requirements/${requirementId}/match-experts/persist`, params)
+  }
+
+  // 查询全部转化成果
+  getAllTransformations() {
+    return this.get<TransformationResult[]>('/transformations')
+  }
+
+  // 创建转化成果记录
+  createTransformation(transformationData: CreateTransformationParams) {
+    return this.post<TransformationResult>('/transformations', transformationData)
+  }
+
+  // 生成评估报告
+  generateValuationReport(valuationParams: GenerateValuationParams) {
+    return this.post<ValuationReport>('/valuations', valuationParams)
+  }
+
+  // 查询评估报告列表
+  getValuationReports(queryParams: QueryValuationParams) {
+    return this.get<ValuationReport[]>('/valuations', queryParams)
+  }
+
+  // 更新评估模型参数
+  updateValuationParam(key: string, paramData: UpdateValuationParam) {
+    return this.put<ApiResponse>(`/valuation-params/${key}`, paramData)
+  }
 }
 
 // 导出API实例
@@ -197,5 +281,94 @@ export const authApi = {
   // 获取当前用户信息
   getCurrentUser() {
     return api.get<any>('/users/me', {}, { noCache: true })
+  }
+}
+
+// 专利相关方法
+export const patentApi = {
+  // 查询专利（按类别）
+  getPatents: (params: PatentQueryParams) => {
+    return api.getPatentsByCategory(params.category, params.query)
+  },
+
+  // 创建/更新专利
+  createOrUpdatePatent: (params: PatentCreateUpdateParams) => {
+    return api.createOrUpdatePatent(params)
+  },
+
+  // 获取单条专利
+  getPatent: (category: PatentCategory, publicNum: string) => {
+    return api.getPatentByCategoryAndNum(category, publicNum)
+  }
+}
+// 专家相关方法
+export const expertApi = {
+  // 查询专家
+  getExperts: (params: ExpertQueryParams) => {
+    return api.getExperts(params.query)
+  },
+
+  // 创建专家
+  createExpert: (expertData: Omit<Expert, 'id'>) => {
+    return api.createExpert(expertData)
+  }
+}
+
+// 需求相关方法
+export const requirementApi = {
+  // 创建需求
+  createRequirement: (requirementData: CreateRequirementParams) => {
+    return api.createRequirement(requirementData)
+  },
+
+  // 需求匹配专利
+  matchPatentsForRequirement: (requirementId: number) => {
+    return api.matchPatentsForRequirement(requirementId)
+  },
+
+  // 需求匹配专家
+  matchExpertsForRequirement: (requirementId: number) => {
+    return api.matchExpertsForRequirement(requirementId)
+  },
+
+  // 保存专利匹配结果
+  persistPatentMatches: (requirementId: number, params: PersistPatentMatchParams) => {
+    return api.persistPatentMatches(requirementId, params)
+  },
+
+  // 保存专家匹配结果
+  persistExpertMatches: (requirementId: number, params: PersistExpertMatchParams) => {
+    return api.persistExpertMatches(requirementId, params)
+  }
+}
+
+// 转化成果相关方法
+export const transformationApi = {
+  // 查询全部转化成果
+  getAllTransformations: () => {
+    return api.getAllTransformations()
+  },
+
+  // 创建转化成果记录
+  createTransformation: (transformationData: CreateTransformationParams) => {
+    return api.createTransformation(transformationData)
+  }
+}
+
+// 价值评估相关方法
+export const valuationApi = {
+  // 生成评估报告
+  generateValuationReport: (valuationParams: GenerateValuationParams) => {
+    return api.generateValuationReport(valuationParams)
+  },
+
+  // 查询评估报告列表
+  getValuationReports: (queryParams: QueryValuationParams) => {
+    return api.getValuationReports(queryParams)
+  },
+
+  // 更新评估模型参数
+  updateValuationParam: (key: string, paramData: UpdateValuationParam) => {
+    return api.updateValuationParam(key, paramData)
   }
 }

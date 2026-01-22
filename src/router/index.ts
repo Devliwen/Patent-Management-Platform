@@ -60,6 +60,56 @@ const routes: Array<RouteRecordRaw> = [
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     redirect: '/'
+  },
+  {
+    path: '/patent',
+    name: 'Patent',
+    component: () => import('../views/PatentManage.vue'), // 懒加载专利管理页面
+    meta: { 
+      title: '专利管理',
+      requiresAuth: true, // 假设专利管理需要登录
+      transition: 'fade'
+    }
+  },
+  {
+    path: '/expert',
+    name: 'Expert',
+    component: () => import('../views/ExpertManage.vue'), // 懒加载专家管理页面
+    meta: { 
+      title: '专家管理',
+      requiresAuth: true, // 假设专家管理需要登录
+      transition: 'fade'
+    }
+  },
+  {
+    path: '/requirement',
+    name: 'Requirement',
+    component: () => import('../views/RequirementManage.vue'), // 懒加载需求管理页面
+    meta: { 
+      title: '需求管理',
+      requiresAuth: true, // 假设需求管理需要登录
+      transition: 'fade'
+    }
+  },
+  {
+    path: '/transformation',
+    name: 'Transformation',
+    component: () => import('../views/TransformationManage.vue'), // 懒加载转化成果管理页面
+    meta: { 
+      title: '转化成果管理',
+      requiresAuth: true, // 假设转化成果管理需要登录
+      transition: 'fade'
+    }
+  },
+  {
+    path: '/valuation',
+    name: 'Valuation',
+    component: () => import('../views/ValuationManage.vue'), // 懒加载价值评估管理页面
+    meta: { 
+      title: '价值评估管理',
+      requiresAuth: true, // 假设价值评估管理需要登录
+      transition: 'fade'
+    }
   }
 ]
 

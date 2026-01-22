@@ -38,6 +38,26 @@
                     <el-icon><DataAnalysis /></el-icon>
                     <span>价值评估</span>
                   </el-menu-item>
+                  <el-menu-item index="patent">
+                    <el-icon><Document /></el-icon>
+                    <span>专利管理</span>
+                  </el-menu-item>
+                  <el-menu-item index="expert">
+                    <el-icon><User /></el-icon>
+                    <span>专家管理</span>
+                  </el-menu-item>
+                  <el-menu-item index="requirement">
+                    <el-icon><Message /></el-icon>
+                    <span>需求管理</span>
+                  </el-menu-item>
+                  <el-menu-item index="transformation">
+                    <el-icon><TrendCharts /></el-icon>
+                    <span>转化成果</span>
+                  </el-menu-item>
+                  <el-menu-item index="valuation">
+                    <el-icon><Money /></el-icon>
+                    <span>估值管理</span>
+                  </el-menu-item>
                 </el-menu>
               </nav>
               
@@ -236,7 +256,7 @@ import FeatureCard from '../components/FeatureCard.vue'
 import {
   Cpu, House, Document, UserFilled, DataAnalysis, Star, Lightning, Lock, Service,
   User, EditPen, DocumentChecked, TrendCharts, Phone, Message, Location, 
-  ArrowRight, ArrowDown
+  ArrowRight, ArrowDown, Money
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -366,6 +386,46 @@ const handleNavSelect = (index: string) => {
     case 'evaluation':
       ElMessage.info('价值评估功能即将上线，敬请期待')
       break
+    case 'patent':
+      if (isLogin.value) {
+        router.push('/patent')
+      } else {
+        ElMessage.warning('请先登录后使用该功能')
+        router.push('/login?redirect=/patent')
+      }
+      break
+      case 'expert':
+        if (isLogin.value) {
+          router.push('/expert')
+        } else {
+          ElMessage.warning('请先登录后使用该功能')
+          router.push('/login?redirect=/expert')
+        }
+        break
+      case 'requirement':
+        if (isLogin.value) {
+          router.push('/requirement')
+        } else {
+          ElMessage.warning('请先登录后使用该功能')
+          router.push('/login?redirect=/requirement')
+        }
+        break
+      case 'transformation':
+        if (isLogin.value) {
+          router.push('/transformation')
+        } else {
+          ElMessage.warning('请先登录后使用该功能')
+          router.push('/login?redirect=/transformation')
+        }
+        break
+      case 'valuation':
+        if (isLogin.value) {
+          router.push('/valuation')
+        } else {
+          ElMessage.warning('请先登录后使用该功能')
+          router.push('/login?redirect=/valuation')
+        }
+        break
   }
 }
 
