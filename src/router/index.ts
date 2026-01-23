@@ -110,6 +110,16 @@ const routes: Array<RouteRecordRaw> = [
       requiresAuth: true, // 假设价值评估管理需要登录
       transition: 'fade'
     }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue'), // 懒加载个人中心页面
+    meta: { 
+      title: '个人中心',
+      requiresAuth: true, // 个人中心需要登录
+      transition: 'fade'
+    }
   }
 ]
 

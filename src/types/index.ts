@@ -221,3 +221,81 @@ export interface UpdateValuationParam {
   value: string | number | boolean
   description?: string
 }
+
+// 用户账户信息类型
+export interface UserAccount {
+  id: number
+  username: string
+  email?: string
+  phone?: string
+  role: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+// 用户资料类型
+export interface UserProfile {
+  id: number
+  userId: number
+  nickname?: string
+  avatar?: string
+  realName?: string
+  gender?: 'male' | 'female' | 'other'
+  birthDate?: string
+  bio?: string
+  address?: string
+  website?: string
+  socialLinks?: Record<string, string>
+  preferences?: Record<string, any>
+  updatedAt: string
+}
+
+// 专家资料类型
+export interface ExpertProfile {
+  id: number
+  userId: number
+  name: string
+  field: string
+  expertise: string
+  achievements?: string
+  contactInfo?: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+// 机构信息类型
+export interface Organization {
+  id: number
+  name: string
+  type: string
+  description?: string
+  address?: string
+  contactInfo?: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
+// 完整用户信息类型
+export interface FullUserInfo {
+  userAccount: UserAccount
+  userProfile: UserProfile
+  expertProfile?: ExpertProfile
+  mainOrganization?: Organization
+}
+
+// 更新用户资料参数
+export interface UpdateUserProfileParams {
+  nickname?: string
+  avatar?: string
+  realName?: string
+  gender?: 'male' | 'female' | 'other'
+  birthDate?: string
+  bio?: string
+  address?: string
+  website?: string
+  socialLinks?: Record<string, string>
+  preferences?: Record<string, any>
+}

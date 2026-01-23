@@ -6,7 +6,7 @@ import axios, {
 } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '../router'
-import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, GenerateValuationParams, MatchedExpert, MatchedPatent, PatentBase, PatentCategory, PatentCreateUpdateParams, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateValuationParam, ValuationReport } from '../types'
+import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, PatentBase, PatentCategory, PatentCreateUpdateParams, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserProfileParams, UpdateValuationParam, UserProfile, ValuationReport } from '../types'
 
 // 取消请求token缓存
 const cancelTokenMap = new Map<string, CancelTokenSource>()
@@ -257,6 +257,16 @@ class ApiService {
   updateValuationParam(key: string, paramData: UpdateValuationParam) {
     return this.put<ApiResponse>(`/valuation-params/${key}`, paramData)
   }
+
+  // 获取当前用户信息
+  getCurrentUserInfo() {
+    return this.get<FullUserInfo>('/users/me')
+  }
+
+  // 更新用户资料
+  updateUserProfile(profileData: UpdateUserProfileParams) {
+    return this.put<UserProfile>('/users/me/profile', profileData)
+  }
 }
 
 // 导出API实例
@@ -370,5 +380,18 @@ export const valuationApi = {
   // 更新评估模型参数
   updateValuationParam: (key: string, paramData: UpdateValuationParam) => {
     return api.updateValuationParam(key, paramData)
+  }
+}
+
+// 用户资料相关方法
+export const profileApi = {
+  // 获取当前用户信息
+  getCurrentUserInfo: () => {
+    return api.getCurrentUserInfo()
+  },
+
+  // 更新用户资料
+  updateUserProfile: (profileData: UpdateUserProfileParams) => {
+    return api.updateUserProfile(profileData)
   }
 }

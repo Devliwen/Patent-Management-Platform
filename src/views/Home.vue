@@ -479,8 +479,7 @@ const goToExpertSearch = () => {
 
 // 跳转到个人中心
 const goToProfile = () => {
-  ElMessage.info('跳转到个人中心页面')
-  // router.push('/profile')
+  router.push('/profile')
 }
 
 // 退出登录
