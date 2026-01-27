@@ -25,15 +25,21 @@ public class JwtService {
         this.expirationSeconds = expirationSeconds;
     }
 
-    public String createToken(long userId) {
+    public String createToken(long userId, String username) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(expirationSeconds);
         return Jwts.builder()
                 .subject(Long.toString(userId))
+                .claim("username", username)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(exp))
                 .signWith(key)
                 .compact();
+    }
+    
+    // 保持向后兼容的方法
+    public String createToken(long userId) {
+        return createToken(userId, "");
     }
 
     public Long parseUserId(String token) {

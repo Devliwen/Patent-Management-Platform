@@ -9,9 +9,11 @@ import org.ihebut.patent.patent.mapper.UserAccountMapper;
 import org.ihebut.patent.patent.mapper.UserProfileMapper;
 import org.ihebut.patent.patent.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -36,8 +38,11 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
+    // 关键：Transactional + 完全不关联实体，仅用 userId
+    @Transactional
     @PostMapping("/register")
     public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest request) {
+        // 1. 严格参数校验
         if (request == null || request.getUsername() == null || request.getUsername().isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "username不能为空");
         }
@@ -48,25 +53,39 @@ public class AuthController {
             throw new ResponseStatusException(BAD_REQUEST, "用户名已存在");
         }
 
+        // 2. 构建 UserAccount（仅设置基础字段，ID 为 null）
         UserAccount user = new UserAccount();
         user.setUsername(request.getUsername().trim());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setPhone(request.getPhone());
-        user.setEmail(request.getEmail());
+        user.setPhone(request.getPhone() == null ? "" : request.getPhone().trim());
+        user.setEmail(request.getEmail() == null ? "" : request.getEmail().trim());
+        user.setStatus("1"); // String 类型，匹配实体
+        user.setUserType("0"); // String 类型，匹配实体
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+
+        // 3. 保存 UserAccount（获取自增 ID）
         user = userAccountMapper.save(user);
 
+        // 4. 保存 UserProfile（核心：只传 userId，给 user 字段赋值，不能为 null）
         if (request.getNickname() != null && !request.getNickname().isBlank()) {
             UserProfile profile = new UserProfile();
+             // 核心步骤2：给 user 字段赋值（必须是已保存的 UserAccount 持久化对象）
             profile.setUser(user);
             profile.setNickname(request.getNickname().trim());
+            // 注：userId 会通过 @MapsId 自动从 user.getId() 填充，无需手动设置
+            // createdAt/updatedAt 由实体的 @PrePersist 自动填充
+
+            // 现在保存 UserProfile 不会报「null one-to-one property」错误
             userProfileMapper.save(profile);
         }
 
+        // 5. 返回成功响应
         return ApiResponse.ok(Map.of("userId", user.getId()));
     }
 
     @PostMapping("/login")
-    public ApiResponse<String> login(@RequestBody LoginRequest request) {
+    public ApiResponse<Map<String, Object>> login(@RequestBody LoginRequest request) {
         if (request == null || request.getUsername() == null || request.getUsername().isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "username不能为空");
         }
@@ -79,7 +98,15 @@ public class AuthController {
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new ResponseStatusException(BAD_REQUEST, "用户名或密码错误");
         }
-        return ApiResponse.ok(jwtService.createToken(user.getId()));
+
+        // 2. 生成JWT令牌（核心！必须返回令牌）
+        String token = jwtService.createToken(user.getId(), user.getUsername());
+
+        // 3. 返回令牌 + 用户基本信息
+        return ApiResponse.ok(Map.of(
+                "token", token,          // 核心：JWT令牌
+                "userId", user.getId(),  // 用户ID
+                "username", user.getUsername() // 用户名
+        ));
     }
 }
-
