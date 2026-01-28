@@ -1,2 +1,4 @@
 org\ihebut\patent\patent\controller\AuthControllerTest.class
+org\ihebut\patent\patent\controller\ChatControllerTest.class
+org\ihebut\patent\patent\controller\AiControllerTest.class
 org\ihebut\patent\patent\PatentApplicationTests.class

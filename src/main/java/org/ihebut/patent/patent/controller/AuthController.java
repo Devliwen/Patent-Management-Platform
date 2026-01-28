@@ -9,6 +9,7 @@ import org.ihebut.patent.patent.mapper.UserAccountMapper;
 import org.ihebut.patent.patent.mapper.UserProfileMapper;
 import org.ihebut.patent.patent.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,6 +38,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Transactional
     public ApiResponse<Map<String, Object>> register(@RequestBody RegisterRequest request) {
         if (request == null || request.getUsername() == null || request.getUsername().isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "username不能为空");
@@ -82,4 +84,3 @@ public class AuthController {
         return ApiResponse.ok(jwtService.createToken(user.getId()));
     }
 }
-

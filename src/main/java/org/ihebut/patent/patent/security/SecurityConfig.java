@@ -29,6 +29,7 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/error").permitAll()
+                .requestMatchers("/api/ai/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/patents/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/experts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()
@@ -48,6 +49,7 @@ public class SecurityConfig {
         
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/error").permitAll()
+                .requestMatchers("/api/ai/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/patents/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/experts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()

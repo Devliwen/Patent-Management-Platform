@@ -2,7 +2,10 @@
 
 本说明依据项目计划书功能点（专利/专家查询、需求发布与智能匹配、转化成果展示、价值评估预测、权限管理、数据同步、统计分析等）整理，并以你的 5 张专利分表结构为基准。
 
-对应完整建表 SQL：`docs/database_schema_v1.sql`
+对应完整建表 SQL：
+
+- 主业务表：`docs/database_schema_v1.sql`
+- AI 聊天会话（持久化）：`docs/database_schema_ai_chat.sql`
 
 ## 0. 总览（表格视图）
 
@@ -22,6 +25,7 @@
 | 运营 | user_notification | 通知/推送 | id | user_id、related_requirement_id |
 | 运营 | data_sync_job | 数据同步任务 | id | created_by -> user_account.id |
 | 运营 | audit_log | 审计日志 | id | user_id -> user_account.id |
+| AI/对话 | chat_session / chat_message | 聊天会话与消息记录（持久化多轮对话） | id | chat_session.user_id -> user_account.id（逻辑关联）；chat_message.session_id -> chat_session.id（逻辑关联） |
 
 ## 1. 专利库（5 张分表，同结构）
 
@@ -478,3 +482,62 @@
 | resource_id | varchar(128) | 资源ID（可选） |
 | detail | json | 结构化详情（可选） |
 | created_at | datetime(3) | 创建时间 |
+
+## 9. AI 聊天会话（持久化多轮对话）
+
+用于支持“下次登录继续聊天”的体验：
+
+- `chat_session`：会话元信息（归属用户、标题、更新时间）
+- `chat_message`：会话消息流水（role + content + created_at），用于前端展示聊天记录，同时作为 AI 继续对话的上下文
+
+> 建表 SQL：`docs/database_schema_ai_chat.sql`
+
+### 9.1 `chat_session`（会话）
+
+- `id` bigint PK
+- `user_id` bigint（逻辑关联 `user_account.id`）
+- `title` varchar(255)（可选，会话标题）
+- `created_at` / `updated_at`
+
+#### 9.1.1 chat_session 字段表
+
+| 字段名 | 类型 | 约束/说明 |
+|---|---|---|
+| id | bigint | PK，AUTO_INCREMENT |
+| user_id | bigint | NOT NULL，归属用户 |
+| title | varchar(255) | 会话标题（可选） |
+| created_at | datetime(3) | 创建时间 |
+| updated_at | datetime(3) | 更新时间（自动更新） |
+
+#### 9.1.2 chat_session 索引
+
+| 索引名 | 字段 | 说明 |
+|---|---|---|
+| idx_chat_session_user_updated | (user_id, updated_at) | 查询用户会话列表（按更新时间倒序） |
+
+### 9.2 `chat_message`（会话消息记录）
+
+- `id` bigint PK
+- `session_id` bigint（逻辑关联 `chat_session.id`）
+- `user_id` bigint（冗余字段，便于按用户维度检索/审计）
+- `role` varchar(16)（user / assistant / system）
+- `content` longtext（消息内容）
+- `created_at`
+
+#### 9.2.1 chat_message 字段表
+
+| 字段名 | 类型 | 约束/说明 |
+|---|---|---|
+| id | bigint | PK，AUTO_INCREMENT |
+| session_id | bigint | NOT NULL，会话ID |
+| user_id | bigint | NOT NULL，归属用户 |
+| role | varchar(16) | NOT NULL，user/assistant/system |
+| content | longtext | NOT NULL，消息内容 |
+| created_at | datetime(3) | 创建时间 |
+
+#### 9.2.2 chat_message 索引
+
+| 索引名 | 字段 | 说明 |
+|---|---|---|
+| idx_chat_msg_session_created | (session_id, created_at) | 按会话查询消息记录（时间正序/倒序） |
+| idx_chat_msg_user_created | (user_id, created_at) | 按用户查询消息记录（可选） |

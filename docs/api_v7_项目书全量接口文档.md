@@ -2061,4 +2061,135 @@ GET /api/requirements/1/match-experts
 >
 > 接口描述：更新评估模型参数（写入 patent_valuation_model_param），用于管理员维护评估准确性。
 
+---
+
+## 12. AI 中转接口（通义千问）
+
+> 安全说明：前端禁止直连通义千问（API Key 可被抓包泄露），必须通过后端中转。
+
+### 12.1 AI 问答（后端中转）
+
+> 请求路径：/api/ai/chat
+>
+> 请求方式：POST
+>
+> 接口描述：前端发送问题到后端；后端携带服务端保存的通义千问 API Key 调用 DashScope，再返回结果给前端。
+>
+> 认证要求：无需登录（纯中转，不保存会话）
+
+请求参数格式：application/json
+
+| 参数名称 | 说明 | 类型 | 是否必须 | 备注 |
+| --- | --- | --- | --- | --- |
+| question | 问题内容 | string | 是 | |
+| model | 模型 | string | 否 | 默认 qwen-plus |
+| temperature | 随机性 | number | 否 | 例如 0.7 |
+| maxTokens | 最大输出 | number | 否 | |
+
+请求数据样例：
+
+```json
+{
+  "question": "帮我总结一下高校知识产权运营平台的核心功能",
+  "model": "qwen-plus",
+  "temperature": 0.7
+}
+```
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "answer": "......",
+    "model": "qwen-plus",
+    "requestId": "xxx"
+  }
+}
+```
+
+---
+
+## 13. 聊天会话接口（持久化）
+
+> 说明：用于“登录后继续聊天”的场景。后端会把每次提问与回答写入数据库，会话列表/消息记录可供前端展示；提问时会携带历史消息作为上下文让 AI 续写回答。
+
+### 13.1 创建会话
+
+> 请求路径：/api/chat/sessions
+>
+> 请求方式：POST
+>
+> 认证要求：需要登录
+
+请求参数格式：application/json（可选）
+
+| 参数名称 | 说明 | 类型 | 是否必须 | 备注 |
+| --- | --- | --- | --- | --- |
+| title | 会话标题 | string | 否 | |
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "id": 1,
+    "title": "我的聊天",
+    "createdAt": "2026-01-28T00:00:00",
+    "updatedAt": "2026-01-28T00:00:00"
+  }
+}
+```
+
+### 13.2 查询会话列表
+
+> 请求路径：/api/chat/sessions
+>
+> 请求方式：GET
+>
+> 认证要求：需要登录
+
+### 13.3 查询会话消息记录
+
+> 请求路径：/api/chat/sessions/{sessionId}/messages
+>
+> 请求方式：GET
+>
+> 认证要求：需要登录
+
+### 13.4 继续对话（带历史上下文）
+
+> 请求路径：/api/chat/ask
+>
+> 请求方式：POST
+>
+> 认证要求：需要登录
+
+请求参数格式：application/json
+
+| 参数名称 | 说明 | 类型 | 是否必须 | 备注 |
+| --- | --- | --- | --- | --- |
+| sessionId | 会话ID | number | 否 | 不传则自动创建新会话 |
+| question | 问题内容 | string | 是 | |
+| model | 模型 | string | 否 | 默认 qwen-plus |
+| temperature | 随机性 | number | 否 | |
+| maxTokens | 最大输出 | number | 否 | |
+| historyLimit | 历史条数 | number | 否 | 默认 20，最大 50 |
+
+请求数据样例：
+
+```json
+{
+  "sessionId": 1,
+  "question": "根据我们之前的对话，继续补充细节",
+  "model": "qwen-plus",
+  "temperature": 0.7,
+  "historyLimit": 20
+}
+```
+
  
