@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface UserAccountMapper extends JpaRepository<UserAccount, Long> {
+    // 新增：检查用户名是否存在
+    boolean existsByUsername(String username);
     Optional<UserAccount> findByUsername(String username);
 }
 
