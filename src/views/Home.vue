@@ -7,6 +7,43 @@
 
       <!-- 首页内容（加载完成） -->
       <div v-else>
+        <!-- 浮动AI咨询图标 -->
+        <div 
+          class="ai-float-button" 
+          :class="{ active: showAIChat }"
+          @click="toggleAIChat"
+        >
+          <el-icon class="ai-icon"><ChatDotRound /></el-icon>
+          <span class="ai-text">AI咨询</span>
+        </div>
+
+        <!-- AI咨询面板 -->
+        <div 
+          v-if="showAIChat" 
+          class="ai-chat-overlay"
+          @click="closeAIChat"
+        >
+          <div 
+            class="ai-chat-container" 
+            @click.stop
+            :style="{ width: aiChatWidth + 'px' }"
+          >
+            <!-- 可拖动的分界线 -->
+            <div 
+              class="resize-handle left"
+              @mousedown="startResize"
+            ></div>
+            
+            <!-- AI聊天组件 -->
+            <AIChat />
+            
+            <!-- 关闭按钮 -->
+            <div class="close-button" @click="closeAIChat">
+              <el-icon><Close /></el-icon>
+            </div>
+          </div>
+        </div>
+
         <!-- 导航栏 -->
         <header class="home-header">
           <div class="container">
@@ -26,10 +63,7 @@
                     <el-icon><Document /></el-icon>
                     <span>专利查询</span>
                   </el-menu-item>
-                  <el-menu-item index="expert">
-                    <el-icon><UserFilled /></el-icon>
-                    <span>专家对接</span>
-                  </el-menu-item>
+                  
                   <el-menu-item index="demand">
                     <el-icon><Message /></el-icon>
                     <span>需求发布</span>
@@ -38,9 +72,13 @@
                     <el-icon><DataAnalysis /></el-icon>
                     <span>价值评估</span>
                   </el-menu-item>
-                  <el-menu-item index="patent">
+                  <el-menu-item index="patent/manage">
                     <el-icon><Document /></el-icon>
-                    <span>专利管理</span>
+                    <span>我的专利</span>
+                  </el-menu-item>
+                  <el-menu-item index="expert">
+                    <el-icon><UserFilled /></el-icon>
+                    <span>专家对接</span>
                   </el-menu-item>
                   <el-menu-item index="expert">
                     <el-icon><User /></el-icon>
@@ -54,10 +92,6 @@
                     <el-icon><TrendCharts /></el-icon>
                     <span>转化成果</span>
                   </el-menu-item>
-                  <el-menu-item index="valuation">
-                    <el-icon><Money /></el-icon>
-                    <span>估值管理</span>
-                  </el-menu-item>
                 </el-menu>
               </nav>
               
@@ -69,10 +103,12 @@
                     {{ userInfo.nickname || userInfo.username }}
                     <el-icon><ArrowDown /></el-icon>
                   </el-button>
-                  <el-dropdown-menu slot="dropdown">
-                    <el-dropdown-item @click="goToProfile">个人中心</el-dropdown-item>
-                    <el-dropdown-item @click="logout" divided>退出登录</el-dropdown-item>
-                  </el-dropdown-menu>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="goToProfile">个人中心</el-dropdown-item>
+                      <el-dropdown-item @click="logout" divided>退出登录</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
                 </el-dropdown>
               </div>
             </div>
@@ -157,7 +193,7 @@
                 </el-card>
               </div>
               <div class="case-more">
-                <el-button type="text" size="large" @click="loadMoreCases">
+                <el-button type="link" size="large" @click="loadMoreCases">
                   查看更多案例 <el-icon><ArrowRight /></el-icon>
                 </el-button>
               </div>
@@ -173,7 +209,8 @@
                   注册成为平台用户，享受专利查询、专家对接、需求发布等全方位服务，
                   让您的知识产权成果创造更大价值。
                 </p>
-                <el-button type="primary" size="large" @click="goToRegister">立即注册</el-button>
+                <el-button v-if="!isLogin" type="primary" size="large" @click="goToRegister">立即注册</el-button>
+                <el-button v-else type="primary" size="large" @click="goToProfile">个人中心</el-button>
               </div>
             </div>
           </section>
@@ -246,13 +283,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ChatDotRound, Close } from '@element-plus/icons-vue'
 import { authApi } from '../api'
 import type { FeatureItem, AdvantageItem, CaseItem } from '../types'
 import HomeSkeleton from '../components/HomeSkeleton.vue'
 import FeatureCard from '../components/FeatureCard.vue'
+import AIChat from '../components/AIChat.vue'
 import {
   Cpu, House, Document, UserFilled, DataAnalysis, Star, Lightning, Lock, Service,
   User, EditPen, DocumentChecked, TrendCharts, Phone, Message, Location, 
@@ -267,31 +306,81 @@ const userInfo = reactive({
   nickname: '',
   userId: 0
 })
+
+// AI咨询功能相关
+const showAIChat = ref(false)
+const aiChatWidth = ref(400)
+const isResizing = ref(false)
+
+// 更新登录状态的函数
+function updateLoginStatus() {
+  isLogin.value = !!localStorage.getItem('token')
+}
+
+// 监听 localStorage 变化，检测登录状态改变
+window.addEventListener('storage', (e) => {
+  if (e.key === 'token') {
+    if (e.newValue) {
+      // 如果变为登录状态，更新状态并获取用户信息
+      updateLoginStatus()
+      // 在 storage 事件中，避免因获取用户信息失败而影响其他标签页
+      loadUserInfo().catch(error => {
+        console.error('在 storage 事件中获取用户信息失败:', error)
+        // 只有在明确是 401 错误时才更新登录状态
+        if (error?.response?.data?.code === 401 || error?.message?.includes('登录状态失效')) {
+          localStorage.removeItem('token')
+          updateLoginStatus()
+        }
+      })
+    } else {
+      // 如果变为未登录状态，更新状态并清空用户信息
+      updateLoginStatus()
+      Object.assign(userInfo, { username: '', nickname: '', userId: 0 })
+    }
+  }
+})
+
+// 封装获取用户信息的函数
+async function loadUserInfo() {
+  try {
+    const userData = await authApi.getCurrentUser()
+    Object.assign(userInfo, userData)
+    return userData // 返回用户数据以便调用方处理
+  } catch (error: any) {
+    console.error('获取用户信息失败:', error)
+    // 只有在明确是 401 错误（token 无效）时才删除 token
+    if (error?.response?.data?.code === 401 || error?.message?.includes('登录状态失效')) {
+      localStorage.removeItem('token')
+      updateLoginStatus() // 更新登录状态
+    }
+    throw error // 重新抛出错误，以便调用方可以处理
+  }
+}
 // 当前激活的导航项
 const activeNav = ref('home')
 
 // 核心功能数据（可后续对接接口）
 const features = ref<FeatureItem[]>([
   {
-    icon: DocumentChecked,
+    icon: markRaw(DocumentChecked),
     title: '专利查询',
     description: '提供全面的专利数据库检索服务，支持多条件组合搜索，快速找到您需要的知识产权成果。',
     to: '/patent'
   },
   {
-    icon: User,
+    icon: markRaw(User),
     title: '专家对接',
     description: '汇聚各领域专家资源，实现需求与专家的精准匹配，助力技术难题解决与项目合作。',
     to: '/expert'
   },
   {
-    icon: EditPen,
+    icon: markRaw(EditPen),
     title: '需求发布',
     description: '便捷发布技术需求、合作需求，系统智能匹配相关专利与专家，提高对接效率。',
     to: '/demand'
   },
   {
-    icon: TrendCharts,
+    icon: markRaw(TrendCharts),
     title: '价值评估',
     description: '基于多维度指标的专利价值智能评估系统，为知识产权转化提供科学参考依据。',
     to: '/evaluation'
@@ -301,22 +390,22 @@ const features = ref<FeatureItem[]>([
 // 平台优势数据
 const advantages = ref<AdvantageItem[]>([
   {
-    icon: Star,
+    icon: markRaw(Star),
     title: '资源丰富',
     description: '整合全国高校专利数据库，汇聚各领域专家资源，提供全面的知识产权服务支持。'
   },
   {
-    icon: Lightning,
+    icon: markRaw(Lightning),
     title: '智能匹配',
     description: '基于人工智能技术的需求与资源精准匹配算法，提高对接效率与成功率。'
   },
   {
-    icon: Lock,
+    icon: markRaw(Lock),
     title: '安全可靠',
     description: '严格的数据安全保护机制，保障用户信息与知识产权成果安全，提供可信的交易环境。'
   },
   {
-    icon: Service,
+    icon: markRaw(Service),
     title: '专业服务',
     description: '拥有专业的知识产权服务团队，提供从专利申请到转化的全流程服务，助力创新成果落地。'
   }
@@ -347,17 +436,68 @@ const cases = ref<CaseItem[]>([
   }
 ])
 
+// AI咨询功能相关函数
+const toggleAIChat = () => {
+  showAIChat.value = !showAIChat.value
+}
+
+const closeAIChat = () => {
+  showAIChat.value = false
+}
+
+// 开始调整大小
+const startResize = (e: MouseEvent) => {
+  isResizing.value = true
+  document.body.classList.add('resizing')
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  e.preventDefault()
+}
+
+// 处理调整大小
+const handleResize = (e: MouseEvent) => {
+  if (!isResizing.value) return
+  
+  const containerWidth = window.innerWidth
+  const minWidth = 200 // 最小宽度
+  const maxWidth = 1200 // 最大宽度
+  
+  let newWidth = containerWidth - e.clientX
+  
+  // 限制宽度范围
+  if (newWidth < minWidth) newWidth = minWidth
+  if (newWidth > maxWidth) newWidth = maxWidth
+  
+  aiChatWidth.value = newWidth
+}
+
+// 停止调整大小
+const stopResize = () => {
+  isResizing.value = false
+  document.body.classList.remove('resizing')
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+}
+
 // 页面加载时获取用户信息
 onMounted(async () => {
   try {
-    if (isLogin.value) {
-      const userData = await authApi.getCurrentUser()
-      Object.assign(userInfo, userData)
+    // 检查是否有 token
+    const token = localStorage.getItem('token');
+    if (token) {
+      // 尝试获取用户信息以验证 token 有效性
+      await loadUserInfo();
+      // 如果获取用户信息失败，loadUserInfo 内部会处理错误和状态更新
+    } else {
+      // 没有 token，确保登录状态为 false
+      updateLoginStatus();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('获取用户信息失败:', error)
-    localStorage.removeItem('token')
-    isLogin.value = false
+    // 只有在明确是 401 错误（token 无效）时才更新登录状态
+    if (error?.response?.data?.code === 401 || error?.message?.includes('登录状态失效')) {
+      updateLoginStatus() // 更新登录状态
+    }
   } finally {
     // 模拟加载延迟，实际项目可移除
     setTimeout(() => {
@@ -375,18 +515,8 @@ const handleNavSelect = (index: string) => {
       router.push('/')
       break
     case 'patent':
-      goToPatentSearch()
-      break
-    case 'expert':
-      goToExpertSearch()
-      break
-    case 'demand':
-      ElMessage.info('需求发布功能即将上线，敬请期待')
-      break
-    case 'evaluation':
-      ElMessage.info('价值评估功能即将上线，敬请期待')
-      break
-    case 'patent':
+      console.log('patent')
+      console.log(isLogin.value)
       if (isLogin.value) {
         router.push('/patent')
       } else {
@@ -394,14 +524,38 @@ const handleNavSelect = (index: string) => {
         router.push('/login?redirect=/patent')
       }
       break
-      case 'expert':
-        if (isLogin.value) {
-          router.push('/expert')
-        } else {
-          ElMessage.warning('请先登录后使用该功能')
-          router.push('/login?redirect=/expert')
-        }
-        break
+    case 'patent/manage':
+      if (isLogin.value) {
+        router.push('/patent/manage')
+      } else {
+        ElMessage.warning('请先登录后使用专利管理功能')
+        router.push('/login?redirect=/patent/manage')
+      }
+      break
+    case 'expert':
+      if (isLogin.value) {
+        router.push('/expert')
+      } else {
+        ElMessage.warning('请先登录后使用该功能')
+        router.push('/login?redirect=/expert')
+      }
+      break
+    case 'demand':
+      if (isLogin.value) {
+        router.push('/demand')
+      } else {
+        ElMessage.warning('请先登录后使用该功能')
+        router.push('/login?redirect=/demand')
+      }
+      break
+    case 'evaluation':
+      if (isLogin.value) {
+        router.push('/evaluation')
+      } else {
+        ElMessage.warning('请先登录后使用该功能')
+        router.push('/login?redirect=/evaluation')
+      }
+      break
       case 'requirement':
         if (isLogin.value) {
           router.push('/requirement')
@@ -416,14 +570,6 @@ const handleNavSelect = (index: string) => {
         } else {
           ElMessage.warning('请先登录后使用该功能')
           router.push('/login?redirect=/transformation')
-        }
-        break
-      case 'valuation':
-        if (isLogin.value) {
-          router.push('/valuation')
-        } else {
-          ElMessage.warning('请先登录后使用该功能')
-          router.push('/login?redirect=/valuation')
         }
         break
   }
@@ -458,8 +604,7 @@ const goToRegister = () => {
 // 跳转到专利查询
 const goToPatentSearch = () => {
   if (isLogin.value) {
-    ElMessage.info('跳转到专利查询页面')
-    // router.push('/patent')
+    router.push('/patent')
   } else {
     ElMessage.warning('请先登录后使用专利查询功能')
     router.push('/login?redirect=/patent')
@@ -469,8 +614,7 @@ const goToPatentSearch = () => {
 // 跳转到专家查询
 const goToExpertSearch = () => {
   if (isLogin.value) {
-    ElMessage.info('跳转到专家查询页面')
-    // router.push('/expert')
+    router.push('/expert')
   } else {
     ElMessage.warning('请先登录后使用专家对接功能')
     router.push('/login?redirect=/expert')
@@ -485,15 +629,129 @@ const goToProfile = () => {
 // 退出登录
 const logout = () => {
   localStorage.removeItem('token')
-  isLogin.value = false
-  userInfo.username = ''
-  userInfo.nickname = ''
+  updateLoginStatus() // 更新登录状态
+  Object.assign(userInfo, { username: '', nickname: '', userId: 0 }) // 清空用户信息
   ElMessage.success('退出登录成功')
   router.push('/')
 }
 </script>
 
 <style scoped>
+/* AI咨询功能样式 */
+.ai-float-button {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(64, 158, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.ai-float-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(64, 158, 255, 0.6);
+}
+
+.ai-float-button.active {
+  background: linear-gradient(135deg, #67c23a 0%, #409eff 100%);
+}
+
+.ai-icon {
+  font-size: 20px;
+}
+
+.ai-text {
+  font-size: 14px;
+}
+
+.ai-chat-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn 0.3s ease;
+}
+
+.ai-chat-container {
+  height: 100%;
+  background: white;
+  position: relative;
+  box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
+  animation: slideInRight 0.3s ease;
+}
+
+.resize-handle.left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: #e4e7ed;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.3s;
+}
+
+.resize-handle.left:hover {
+  background: #409eff;
+}
+
+.resize-handle.left:active {
+  background: #337ecc;
+}
+
+.close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f5f7fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  transition: all 0.3s;
+}
+
+.close-button:hover {
+  background: #409eff;
+  color: white;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { 
+    transform: translateX(100%); 
+    opacity: 0; 
+  }
+  to { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+}
+
+/* 原有样式保留，移除重复定义的部分 */
 /* 路由过渡动画 */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -833,5 +1091,17 @@ const logout = () => {
   .cases-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* 自定义 link 类型按钮样式，模拟原 text 样式 */
+:deep(.el-button--link) {
+  color: #666; /* 原 text 按钮文字颜色 */
+  text-decoration: none; /* 去掉下划线 */
+  background: transparent; /* 透明背景 */
+}
+
+:deep(.el-button--link:hover) {
+  color: #409eff; /* hover 颜色和原 text 一致 */
+  background: #f5f7fa;
 }
 </style>

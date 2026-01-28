@@ -189,7 +189,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { valuationApi } from '@/api'
-import type { ValuationReport, GenerateValuationParams, QueryValuationParams } from '@/types'
+import type { ValuationReport, GenerateValuationParams, QueryValuationParams, PatentCategory } from '@/types'
 
 // 搜索表单
 const searchForm = reactive({
@@ -208,7 +208,7 @@ const total = ref(0)
 const generateDialogVisible = ref(false)
 const dialogTitle = ref('')
 const generateForm = reactive<GenerateValuationParams>({
-  patentCategory: 'wind' as const,
+  patentCategory: 'wind' as PatentCategory,
   patentPublicNum: '',
   modelVersion: 'v1'
 })

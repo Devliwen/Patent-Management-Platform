@@ -194,7 +194,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { transformationApi } from '@/api'
-import type { TransformationResult, CreateTransformationParams } from '@/types'
+import type { TransformationResult, CreateTransformationParams, PatentCategory } from '@/types'
 
 // 搜索表单
 const searchForm = reactive({
@@ -217,7 +217,7 @@ const currentTransformation = ref<TransformationResult>({} as TransformationResu
 // 表单对话框相关
 const formDialogVisible = ref(false)
 const transformationForm = reactive<CreateTransformationParams>({
-  patentCategory: 'wind' as const,
+  patentCategory: 'wind' as PatentCategory,
   patentPublicNum: '',
   expertId: undefined,
   requirementId: undefined,

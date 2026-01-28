@@ -35,25 +35,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="验证码" prop="captcha" v-if="showCaptcha">
-          <div class="captcha-wrapper">
-            <el-input
-              v-model="loginForm.captcha"
-              placeholder="请输入验证码"
-              prefix-icon="VerificationCode"
-              size="large"
-              @keyup.enter="handleLogin"
-            />
-            <el-button 
-              type="default" 
-              class="captcha-btn"
-              :disabled="captchaCountdown > 0"
-              @click="getCaptcha"
-            >
-              {{ captchaCountdown > 0 ? `${captchaCountdown}s后重新获取` : '获取验证码' }}
-            </el-button>
-          </div>
-        </el-form-item>
+
 
         <el-form-item>
           <el-button
@@ -95,19 +77,15 @@ import type { LoginParams } from '../types/auth'
 const router = useRouter()
 const loginFormRef = ref()
 const loading = ref(false)
-const showCaptcha = ref(false) // 登录失败后显示验证码
-const captchaCountdown = ref(0)
-let countdownTimer: number | null = null
 
 // 登录表单数据
-const loginForm = reactive<LoginParams & { captcha: string }>({
+const loginForm = reactive<LoginParams>({
   username: '',
-  password: '',
-  captcha: ''
+  password: ''
 })
 
 // 密码强度校验规则
-const validatePasswordStrength = (value: string, callback: Function) => {
+const validatePasswordStrength = (rule: any, value: string, callback: Function) => {
   if (value) {
     const hasLetter = /[a-zA-Z]/.test(value)
     const hasNumber = /\d/.test(value)
@@ -131,10 +109,6 @@ const loginRules = reactive({
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' },
     { validator: validatePasswordStrength, trigger: 'blur' }
-  ],
-  captcha: [
-    { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 6, message: '验证码长度为6位', trigger: 'blur' }
   ]
 })
 
@@ -143,18 +117,36 @@ const handleLogin = async () => {
   if (!loginFormRef.value) return
   
   try {
-    // 表单验证（验证码按需验证）
-    const validateFields = showCaptcha ? ['username', 'password', 'captcha'] : ['username', 'password']
-    await loginFormRef.value.validateField(validateFields)
+    // 表单验证
+    await loginFormRef.value.validate()
     
     // 设置加载状态
     loading.value = true
     
     // 调用登录API
-    const token = await authApi.login(loginForm)
+    const response = await authApi.login(loginForm)
+    
+    // 提取token（处理可能的对象格式）
+    let token: string
+    if (typeof response === 'string') {
+      token = response
+    } else if (response && typeof response === 'object' && 'token' in response) {
+      // 使用类型断言确保TypeScript知道response有token属性
+      token = (response as { token: string }).token
+    } else {
+      throw new Error('登录返回格式异常')
+    }
     
     // 保存token到localStorage
     localStorage.setItem('token', token)
+    
+    // 调试信息：验证token格式
+    console.log('登录成功，存储的token:', {
+      type: typeof token,
+      length: token.length,
+      prefix: token.substring(0, 20) + '...',
+      isJWT: token.split('.').length === 3
+    })
     
     // 显示登录成功提示
     ElMessage.success('登录成功')
@@ -163,8 +155,6 @@ const handleLogin = async () => {
     const redirect = router.currentRoute.value.query.redirect as string
     router.push(redirect || '/')
   } catch (error: any) {
-    // 登录失败显示验证码
-    showCaptcha.value = true
     // 处理错误
     if (error.message) {
       ElMessage.error(error.message)
@@ -177,38 +167,11 @@ const handleLogin = async () => {
   }
 }
 
-// 获取验证码
-const getCaptcha = async () => {
-  if (!loginForm.username) {
-    ElMessage.warning('请先输入用户名')
-    return
-  }
-  
-  try {
-    // 模拟获取手机号（实际项目中需绑定手机号）
-    const phone = '13800138000' // 示例，实际需从用户信息获取
-    await authApi.getCaptcha(phone)
-    
-    // 开始倒计时
-    captchaCountdown.value = 60
-    countdownTimer = setInterval(() => {
-      captchaCountdown.value--
-      if (captchaCountdown.value <= 0) {
-        clearInterval(countdownTimer!)
-        countdownTimer = null
-      }
-    }, 1000)
-    
-    ElMessage.success('验证码已发送，请注意查收')
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取验证码失败')
-  }
-}
+
 
 // 重置表单
 const resetForm = () => {
   loginFormRef.value?.resetFields()
-  loginForm.captcha = ''
 }
 
 // 跳转到注册页面
@@ -216,14 +179,7 @@ const goToRegister = () => {
   router.push('/register')
 }
 
-// 页面卸载时清除倒计时
-onMounted(() => {
-  return () => {
-    if (countdownTimer) {
-      clearInterval(countdownTimer)
-    }
-  }
-})
+
 </script>
 
 <style scoped>

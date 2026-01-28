@@ -6,7 +6,7 @@ import axios, {
 } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '../router'
-import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, PatentBase, PatentCategory, PatentCreateUpdateParams, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserProfileParams, UpdateValuationParam, UserProfile, ValuationReport } from '../types'
+import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserProfile, ValuationReport } from '../types'
 
 // 取消请求token缓存
 const cancelTokenMap = new Map<string, CancelTokenSource>()
@@ -45,12 +45,31 @@ class ApiService {
         cancelTokenMap.set(requestKey, source)
 
         // 添加token
+        if (!typedConfig.headers) {
+          typedConfig.headers = {}
+        }
+        
         const token = localStorage.getItem('token')
-        if (token) {
-          if (!typedConfig.headers) {
-            typedConfig.headers = {}
-          }
+        // 关键：只在token是字符串时才设置请求头
+        if (token && typeof token === 'string') {
           typedConfig.headers.Authorization = `Bearer ${token}`
+          
+          // 调试信息：打印请求头和token信息
+          console.log('请求拦截器 - 添加Authorization头:', {
+            url: config.url,
+            method: config.method,
+            authorizationHeader: `Bearer ${token}`,
+            tokenLength: token.length,
+            tokenPrefix: token.substring(0, 20) + '...',
+            isJWT: token.split('.').length === 3
+          })
+        } else {
+          // token无效时，清除并提示
+          localStorage.removeItem('token')
+          console.warn('token无效，已清除:', {
+            tokenType: typeof token,
+            tokenValue: token
+          })
         }
         return config
       },
@@ -69,7 +88,7 @@ class ApiService {
         const res = response.data
         // 业务逻辑错误处理
         if (res.code !== 0) {
-          // 401 token失效
+          // 业务逻辑层面的401错误（后端返回的code为401）
           if (res.code === 401) {
             ElMessageBox.confirm(
               '登录状态已失效，请重新登录',
@@ -84,6 +103,11 @@ class ApiService {
               router.push('/login')
             })
             return Promise.reject(new Error('登录状态失效'))
+          }
+          // 业务逻辑层面的403错误
+          if (res.code === 403) {
+            ElMessage.error('无权限执行此操作')
+            return Promise.reject(new Error('无权限执行此操作'))
           }
           ElMessage.error(res.message || '请求失败')
           return Promise.reject(new Error(res.message || '请求失败'))
@@ -114,6 +138,19 @@ class ApiService {
           const delay = this.getRetryDelay(config.retryCount)
           await this.sleep(delay)
           return this.axiosInstance(config)
+        }
+
+        // HTTP状态码错误处理
+        if (error.response?.status === 403) {
+          ElMessage.error('无权限访问，请确认登录状态')
+          localStorage.removeItem('token')
+          router.push('/login')
+          return Promise.reject(error)
+        } else if (error.response?.status === 401) {
+          ElMessage.error('登录已过期，请重新登录')
+          localStorage.removeItem('token')
+          router.push('/login')
+          return Promise.reject(error)
         }
 
         // 通用网络错误提示
@@ -175,23 +212,88 @@ class ApiService {
   }
 
   // 查询专利（按类别）
-  getPatentsByCategory(category: PatentCategory, query?: string) {
-    const params: { category: PatentCategory; query?: string } = { category }
+  getPatentsByCategory(category?: string, query?: string, page?: number, size?: number) {
+    const params: { category?: string; query?: string; page?: number; size?: number } = {}
+    if (category) {
+      params.category = category
+    }
     if (query) {
       params.query = query
     }
-    return this.get<PatentBase[]>('/patents', params)
+    if (page !== undefined) {
+      params.page = page
+    }
+    if (size !== undefined) {
+      params.size = size
+    }
+    return this.get<Pageable<PatentBase>>('/patents', params)
   }
 
-  // 创建/更新专利
-  createOrUpdatePatent(params: PatentCreateUpdateParams) {
-    const { category, ...data } = params
-    return this.post<PatentBase>('/patents', data, { params: { category } })
+  // 创建专利
+  createPatent(category: string, patentData: Omit<PatentBase, 'category'>) {
+    return this.post<PatentBase>('/patents', patentData, { params: { category } })
+  }
+
+  // 更新专利（如果需要单独接口）
+  updatePatent(category: string, publicNum: string, patentData: Omit<PatentBase, 'category' | 'publicNum'>) {
+    return this.put<PatentBase>(`/patents/${category}/${publicNum}`, patentData)
   }
 
   // 获取单条专利
   getPatentByCategoryAndNum(category: PatentCategory, publicNum: string) {
     return this.get<PatentBase>(`/patents/${category}/${publicNum}`)
+  }
+
+  // 个人专利管理接口 - 上传个人专利
+  createUserPatent(patentData: {
+    category: string
+    title: string
+    publicNum?: string
+    abstractText?: string
+    ipc?: string
+    cpc?: string
+    applicant?: string
+    inventor?: string
+    visibility?: string
+  }) {
+    return this.post<any>('/api/user-patents', patentData)
+  }
+
+  // 个人专利管理接口 - 获取个人专利列表
+  getUserPatents(params?: {
+    owner?: string
+    category?: string
+    query?: string
+    visibility?: string
+    page?: number
+    size?: number
+  }) {
+    return this.get<any>('/api/user-patents', params)
+  }
+
+  // 个人专利管理接口 - 获取个人专利详情
+  getUserPatentDetail(id: number) {
+    return this.get<any>(`/api/user-patents/${id}`)
+  }
+
+  // 个人专利管理接口 - 修改个人专利
+  updateUserPatent(id: number, patentData: {
+    category?: string
+    title?: string
+    publicNum?: string
+    abstractText?: string
+    ipc?: string
+    cpc?: string
+    applicant?: string
+    inventor?: string
+    visibility?: string
+  }) {
+    return this.put<any>(`/api/user-patents/${id}`, patentData)
+  }
+
+  // 个人专利管理接口 - 删除个人专利
+  deleteUserPatent(id: number) {
+    return this.delete<any>(`/api/user-patents/${id}`)
   }
 
   // 查询专家
@@ -278,7 +380,19 @@ export default api
 export const authApi = {
   // 注册
   register(data: { username: string; password: string; phone?: string; email?: string; nickname?: string }) {
-    return api.post<{ userId: number }>('/auth/register', data)
+    console.log('注册请求参数：', data) // 打印参数 
+    console.log('请求URL：', `${import.meta.env.VITE_API_BASE_URL}/auth/register`) // 打印完整URL
+    return api.post<{ userId: number }>('/auth/register', data).catch(err => { 
+      // 打印完整错误信息 
+      console.error('注册接口错误详情：', { 
+        url: err.config?.url, 
+        data: err.config?.data, 
+        status: err.response?.status, 
+        responseData: err.response?.data, // 后端返回的错误提示（关键！） 
+        message: err.message 
+      }) 
+      throw err // 继续抛出错误，不影响原有逻辑 
+    })
   },
   // 登录
   login(data: { username: string; password: string }) {
@@ -298,17 +412,95 @@ export const authApi = {
 export const patentApi = {
   // 查询专利（按类别）
   getPatents: (params: PatentQueryParams) => {
-    return api.getPatentsByCategory(params.category, params.query)
+    return api.getPatentsByCategory(params.category, params.query, params.page, params.size).then(response => {
+      console.log('专利API返回数据:', {
+        response: response,
+        type: typeof response,
+        isArray: Array.isArray(response),
+        length: Array.isArray(response) ? response.length : 'N/A'
+      })
+      return response
+    }).catch(error => {
+      console.error('专利API错误:', error)
+      throw error
+    })
   },
 
-  // 创建/更新专利
-  createOrUpdatePatent: (params: PatentCreateUpdateParams) => {
-    return api.createOrUpdatePatent(params)
+  // 创建专利
+  createPatent: (category: string, patentData: Omit<PatentBase, 'category'>) => {
+    return api.createPatent(category, patentData)
+  },
+
+  // 更新专利
+  updatePatent: (category: string, publicNum: string, patentData: Omit<PatentBase, 'category' | 'publicNum'>) => {
+    return api.updatePatent(category, publicNum, patentData)
   },
 
   // 获取单条专利
   getPatent: (category: PatentCategory, publicNum: string) => {
     return api.getPatentByCategoryAndNum(category, publicNum)
+  },
+
+  // 获取用户个人专利列表
+  getUserPatents: (params?: { page?: number; size?: number; query?: string }) => {
+    return api.get<Pageable<UserPatent>>('/user/patents', params)
+  },
+
+  // 删除用户个人专利
+  deleteUserPatent: (category: string, publicNum: string) => {
+    return api.delete(`/user/patents/${category}/${publicNum}`)
+  },
+
+  // 个人专利管理接口 - 上传个人专利
+  createUserPatent: (patentData: {
+    category: string
+    title: string
+    publicNum?: string
+    abstractText?: string
+    ipc?: string
+    cpc?: string
+    applicant?: string
+    inventor?: string
+    visibility?: string
+  }) => {
+    return api.createUserPatent(patentData)
+  },
+
+  // 个人专利管理接口 - 获取个人专利列表
+  getUserPatentsList: (params?: {
+    owner?: string
+    category?: string
+    query?: string
+    visibility?: string
+    page?: number
+    size?: number
+  }) => {
+    return api.getUserPatents(params)
+  },
+
+  // 个人专利管理接口 - 获取个人专利详情
+  getUserPatentDetail: (id: number) => {
+    return api.getUserPatentDetail(id)
+  },
+
+  // 个人专利管理接口 - 修改个人专利
+  updateUserPatent: (id: number, patentData: {
+    category?: string
+    title?: string
+    publicNum?: string
+    abstractText?: string
+    ipc?: string
+    cpc?: string
+    applicant?: string
+    inventor?: string
+    visibility?: string
+  }) => {
+    return api.updateUserPatent(id, patentData)
+  },
+
+  // 个人专利管理接口 - 删除个人专利
+  deleteUserPatentById: (id: number) => {
+    return api.deleteUserPatent(id)
   }
 }
 // 专家相关方法

@@ -6,6 +6,11 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
   plugins: [
     vue(),
     AutoImport({
@@ -23,7 +28,7 @@ export default defineConfig({
         // 配置接口代理，解决前后端分离跨域问题
         target: 'http://localhost:8080', // 后端接口地址
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        //rewrite: (path) => path
       }
     }
   }

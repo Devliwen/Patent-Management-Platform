@@ -1,28 +1,72 @@
 <template>
   <div class="patent-manage-container">
-    <!-- 专利搜索区域 -->
+    <!-- 页面标题和操作按钮 -->
+    <div class="page-header">
+      <h2 class="page-title">我的专利</h2>
+      <div class="header-actions">
+        <el-button type="primary" @click="showUploadDialog">
+          <el-icon><Plus /></el-icon>
+          上传新专利
+        </el-button>
+        <el-button @click="refreshList">
+          <el-icon><Refresh /></el-icon>
+          刷新列表
+        </el-button>
+      </div>
+    </div>
+
+    <!-- 个人专利统计 -->
+    <div class="stats-section">
+      <el-row :gutter="20">
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-number">{{ userPatents.length }}</div>
+              <div class="stat-label">我的专利总数</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-number">{{ getVisibilityCount('PUBLIC') }}</div>
+              <div class="stat-label">公开专利</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-number">{{ getVisibilityCount('PRIVATE') }}</div>
+              <div class="stat-label">私有专利</div>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-number">{{ userPatents.filter(p => p.category === 'solar').length }}</div>
+              <div class="stat-label">太阳能专利</div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- 个人专利搜索区域 -->
     <div class="search-section">
       <el-form :model="searchForm" inline>
-        <el-form-item label="专利类别">
-          <el-select v-model="searchForm.category" placeholder="请选择专利类别" clearable>
-            <el-option label="风能" value="wind" />
-            <el-option label="太阳能" value="solar" />
-            <el-option label="生物质能" value="biomass" />
-            <el-option label="氢能" value="hydrogen" />
-            <el-option label="锂电池" value="lilon" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="搜索关键词">
+        <el-form-item label="搜索我的专利">
           <el-input 
             v-model="searchForm.query" 
-            placeholder="请输入标题/摘要/申请人/发明人"
-            @keyup.enter="searchPatents"
+            placeholder="请输入标题/公开号进行搜索"
+            @keyup.enter="searchUserPatents"
+            style="width: 300px"
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="searchPatents">搜索</el-button>
+          <el-button type="primary" @click="searchUserPatents">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
-          <el-button type="success" @click="openAddDialog">新增专利</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -30,17 +74,27 @@
     <!-- 专利列表 -->
     <div class="patent-list">
       <el-table 
-        :data="patentList" 
+        :data="filteredPatents" 
         v-loading="loading"
         style="width: 100%"
+        empty-text="暂无专利数据，请上传您的专利"
       >
-        <el-table-column prop="publicNum" label="公开号" width="150" />
+        <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="title" label="标题" show-overflow-tooltip />
-        <el-table-column prop="applicant" label="申请人" width="150" show-overflow-tooltip />
+        <el-table-column prop="category" label="类别" width="100">
+          <template #default="{ row }">
+            <el-tag>{{ row.category }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="publicNum" label="公开号" width="150" show-overflow-tooltip />
+        <el-table-column prop="applicant" label="申请人" width="120" show-overflow-tooltip />
         <el-table-column prop="inventor" label="发明人" width="120" show-overflow-tooltip />
-        <el-table-column prop="ipc" label="IPC" width="120" show-overflow-tooltip />
-        <el-table-column prop="appliDate" label="申请日期" width="120" />
-        <el-table-column label="操作" width="150">
+        <el-table-column prop="visibility" label="可见性" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getVisibilityType(row.visibility)">{{ getVisibilityText(row.visibility) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="viewPatent(row)">查看</el-button>
             <el-button size="small" type="primary" @click="editPatent(row)">编辑</el-button>
@@ -53,7 +107,7 @@
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
-        :total="total"
+        :total="filteredPatents.length"
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
@@ -61,140 +115,76 @@
       />
     </div>
 
-    <!-- 专利详情对话框 -->
+    <!-- 专利上传/编辑对话框 -->
     <el-dialog 
-      v-model="detailDialogVisible" 
-      :title="dialogTitle" 
-      width="80%" 
-      :before-close="closeDetailDialog"
-    >
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="公开号">{{ currentPatent.publicNum }}</el-descriptions-item>
-        <el-descriptions-item label="标题">{{ currentPatent.title }}</el-descriptions-item>
-        <el-descriptions-item label="申请人">{{ currentPatent.applicant }}</el-descriptions-item>
-        <el-descriptions-item label="发明人">{{ currentPatent.inventor }}</el-descriptions-item>
-        <el-descriptions-item label="IPC分类">{{ currentPatent.ipc }}</el-descriptions-item>
-        <el-descriptions-item label="CPC分类" v-if="currentPatent.cpc">{{ currentPatent.cpc }}</el-descriptions-item>
-        <el-descriptions-item label="申请号" v-if="currentPatent.appliNum">{{ currentPatent.appliNum }}</el-descriptions-item>
-        <el-descriptions-item label="申请日期" v-if="currentPatent.appliDate">{{ currentPatent.appliDate }}</el-descriptions-item>
-        <el-descriptions-item label="公布日期" v-if="currentPatent.publicDate">{{ currentPatent.publicDate }}</el-descriptions-item>
-        <el-descriptions-item label="法律状态" v-if="currentPatent.legalStatus">{{ currentPatent.legalStatus }}</el-descriptions-item>
-        <el-descriptions-item label="摘要" :span="2" v-if="currentPatent.abstractText">
-          <div class="abstract-content">{{ currentPatent.abstractText }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item label="详情" :span="2" v-if="currentPatent.patentDetails">
-          <div class="details-content">{{ currentPatent.patentDetails }}</div>
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
-
-    <!-- 新增/编辑专利对话框 -->
-    <el-dialog 
-      v-model="formDialogVisible" 
-      :title="dialogTitle" 
-      width="60%" 
-      :before-close="closeFormDialog"
+      v-model="uploadDialogVisible" 
+      :title="uploadDialogTitle" 
+      width="70%"
+      :before-close="closeUploadDialog"
     >
       <el-form 
-        :model="patentForm" 
-        :rules="patentRules" 
         ref="patentFormRef" 
+        :model="patentForm" 
+        :rules="patentRules"
         label-width="120px"
       >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="专利类别" prop="category">
-              <el-select v-model="patentForm.category" placeholder="请选择专利类别" style="width: 100%">
-                <el-option label="风能" value="wind" />
-                <el-option label="太阳能" value="solar" />
-                <el-option label="生物质能" value="biomass" />
-                <el-option label="氢能" value="hydrogen" />
-                <el-option label="锂电池" value="lilon" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="公开号" prop="publicNum">
-              <el-input v-model="patentForm.publicNum" placeholder="请输入公开号" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="标题" prop="title">
-              <el-input v-model="patentForm.title" placeholder="请输入标题" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="申请人" prop="applicant">
-              <el-input v-model="patentForm.applicant" placeholder="请输入申请人" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="发明人" prop="inventor">
-              <el-input v-model="patentForm.inventor" placeholder="请输入发明人" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="IPC分类">
-              <el-input v-model="patentForm.ipc" placeholder="请输入IPC分类" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="CPC分类">
-              <el-input v-model="patentForm.cpc" placeholder="请输入CPC分类" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="申请号">
-              <el-input v-model="patentForm.appliNum" placeholder="请输入申请号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="申请日期">
-              <el-input v-model="patentForm.appliDate" placeholder="请输入申请日期" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="公布日期">
-              <el-input v-model="patentForm.publicDate" placeholder="请输入公布日期" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="法律状态">
-              <el-input v-model="patentForm.legalStatus" placeholder="请输入法律状态" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="专利类别" prop="category">
+          <el-select v-model="patentForm.category" placeholder="请选择专利类别" style="width: 100%">
+            <el-option label="风能" value="wind" />
+            <el-option label="太阳能" value="solar" />
+            <el-option label="生物质能" value="biomass" />
+            <el-option label="氢能" value="hydrogen" />
+            <el-option label="锂电池" value="lilon" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="patentForm.title" placeholder="请输入专利标题" />
+        </el-form-item>
+        
+        <el-form-item label="公开号">
+          <el-input v-model="patentForm.publicNum" placeholder="请输入专利公开号（可选）" />
+        </el-form-item>
+        
         <el-form-item label="摘要">
           <el-input 
             v-model="patentForm.abstractText" 
             type="textarea" 
-            :rows="4" 
-            placeholder="请输入摘要"
+            :rows="3" 
+            placeholder="请输入专利摘要（可选）" 
           />
         </el-form-item>
-        <el-form-item label="详情">
-          <el-input 
-            v-model="patentForm.patentDetails" 
-            type="textarea" 
-            :rows="6" 
-            placeholder="请输入详情"
-          />
+        
+        <el-form-item label="IPC分类">
+          <el-input v-model="patentForm.ipc" placeholder="请输入IPC分类（可选）" />
+        </el-form-item>
+        
+        <el-form-item label="CPC分类">
+          <el-input v-model="patentForm.cpc" placeholder="请输入CPC分类（可选）" />
+        </el-form-item>
+        
+        <el-form-item label="申请人">
+          <el-input v-model="patentForm.applicant" placeholder="请输入申请人（可选）" />
+        </el-form-item>
+        
+        <el-form-item label="发明人">
+          <el-input v-model="patentForm.inventor" placeholder="请输入发明人（可选）" />
+        </el-form-item>
+        
+        <el-form-item label="可见性">
+          <el-select v-model="patentForm.visibility" placeholder="请选择可见性" style="width: 100%">
+            <el-option label="公开" value="PUBLIC" />
+            <el-option label="私有" value="PRIVATE" />
+          </el-select>
         </el-form-item>
       </el-form>
+      
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="closeFormDialog">取消</el-button>
-          <el-button type="primary" @click="savePatent">保存</el-button>
+          <el-button @click="closeUploadDialog">取消</el-button>
+          <el-button type="primary" @click="submitPatent" :loading="uploading">
+            {{ uploadDialogTitle === '上传专利' ? '上传' : '保存' }}
+          </el-button>
         </span>
       </template>
     </el-dialog>
@@ -202,247 +192,374 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { Plus, Refresh } from '@element-plus/icons-vue'
 import { patentApi } from '@/api'
-import type { PatentBase, PatentCategory, PatentQueryParams, PatentCreateUpdateParams } from '@/types'
 
-// 搜索表单
-const searchForm = reactive({
-  category: '' as PatentCategory | '',
+// 专利表单类型定义 - 匹配后端接口
+interface PatentFormData {
+  category: string
+  title: string
+  publicNum?: string
+  abstractText?: string
+  ipc?: string
+  cpc?: string
+  applicant?: string
+  inventor?: string
+  visibility?: string
+  id?: number
+  ownerUserId?: number
+  createdAt?: string
+}
+
+// 搜索表单类型
+interface SearchForm {
+  query: string
+}
+
+// 响应式数据
+const loading = ref(false)
+const uploading = ref(false)
+const uploadDialogVisible = ref(false)
+const uploadDialogTitle = ref('上传专利')
+const patentFormRef = ref<FormInstance>()
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+// 表单数据
+const patentForm = reactive<PatentFormData>({
+  category: '',
+  title: '',
+  publicNum: '',
+  abstractText: '',
+  ipc: '',
+  cpc: '',
+  applicant: '',
+  inventor: '',
+  visibility: 'PUBLIC'
+})
+
+const searchForm = reactive<SearchForm>({
   query: ''
 })
 
-// 专利列表相关
-const patentList = ref<PatentBase[]>([])
-const loading = ref(false)
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
+// 用户个人专利数据（从后端API获取）
+const userPatents = ref<PatentFormData[]>([])
 
-// 详情对话框相关
-const detailDialogVisible = ref(false)
-const dialogTitle = ref('')
-const currentPatent = ref<PatentBase>({} as PatentBase)
-
-// 表单对话框相关
-const formDialogVisible = ref(false)
-const patentForm = reactive<Omit<PatentCreateUpdateParams, 'category'> & { category: PatentCategory | '' }>({
-  publicNum: '',
-  title: '',
-  abstractText: '',
-  applicant: '',
-  inventor: '',
-  ipc: '',
-  appliNum: '',
-  appliDate: '',
-  publicDate: '',
-  cpc: '',
-  nec: '',
-  legalStatus: '',
-  latestLegalStatus: '',
-  status: '',
-  type: '',
-  applicantAddress: '',
-  patentee: '',
-  patenteeAddress: '',
-  agent: '',
-  patentDetails: '',
-  category: ''
-})
-const patentFormRef = ref()
-
-// 表单验证规则
-const patentRules = {
-  category: [
-    { required: true, message: '请选择专利类别', trigger: 'change' }
-  ],
-  publicNum: [
-    { required: true, message: '请输入公开号', trigger: 'blur' }
-  ],
-  title: [
-    { required: true, message: '请输入标题', trigger: 'blur' }
-  ],
-  applicant: [
-    { required: true, message: '请输入申请人', trigger: 'blur' }
-  ]
-}
-
-// 搜索专利
-const searchPatents = async () => {
+// 加载用户个人专利列表
+const loadUserPatents = async () => {
   loading.value = true
   try {
-    const params: PatentQueryParams = {
-      category: searchForm.category as PatentCategory,
-      query: searchForm.query
-    }
+    const response = await patentApi.getUserPatentsList({
+      owner: 'me',
+      query: searchForm.query,
+      page: currentPage.value,
+      size: pageSize.value
+    })
     
-    if (!params.category) {
-      ElMessage.warning('请选择专利类别')
-      return
+    if (response && response.data) {
+      userPatents.value = response.data
+      console.log('用户专利数据加载成功:', userPatents.value.length)
+    } else {
+      console.error('API返回的数据格式异常:', response)
+      ElMessage.error('数据格式异常')
+      userPatents.value = []
     }
-    
-    const result = await patentApi.getPatents(params)
-    patentList.value = result
-    total.value = result.length // 这里简单处理总数，实际应从后端返回
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取专利列表失败')
+  } catch (error) {
+    console.error('加载用户专利失败:', error)
+    ElMessage.error('加载专利列表失败')
+    userPatents.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 重置搜索
-const resetSearch = () => {
-  searchForm.category = ''
-  searchForm.query = ''
-  patentList.value = []
+// 表单验证规则
+const patentRules: FormRules = {
+  category: [
+    { required: true, message: '请选择专利类别', trigger: 'change' }
+  ],
+  title: [
+    { required: true, message: '请输入标题', trigger: 'blur' }
+  ]
 }
 
-// 查看专利详情
-const viewPatent = async (row: PatentBase) => {
-  try {
-    // 这里先直接使用row的数据，也可以从后端获取详细信息
-    currentPatent.value = row
-    dialogTitle.value = '专利详情'
-    detailDialogVisible.value = true
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取专利详情失败')
+// 计算属性：过滤后的专利列表（支持搜索）
+const filteredPatents = computed(() => {
+  if (!searchForm.query.trim()) {
+    return userPatents.value
+  }
+  
+  const query = searchForm.query.toLowerCase()
+  return userPatents.value.filter(patent => 
+    patent.title.toLowerCase().includes(query) ||
+    (patent.publicNum && patent.publicNum.toLowerCase().includes(query)) ||
+    (patent.applicant && patent.applicant.toLowerCase().includes(query))
+  )
+})
+
+// 获取状态统计（根据可见性统计）
+const getVisibilityCount = (visibility: string) => {
+  return userPatents.value.filter(p => p.visibility === visibility).length
+}
+
+// 获取可见性标签类型
+const getVisibilityType = (visibility?: string) => {
+  switch (visibility) {
+    case 'PUBLIC': return 'success'
+    case 'PRIVATE': return 'warning'
+    default: return 'info'
   }
 }
 
-// 编辑专利
-const editPatent = (row: PatentBase) => {
-  // 复制数据到表单
-  Object.assign(patentForm, row)
-  // 如果 row 中有 category 字段则使用，否则留空
-  patentForm.category = (row as any).category ? (row as any).category as PatentCategory : ''
-  dialogTitle.value = '编辑专利'
-  formDialogVisible.value = true
+// 获取可见性文本
+const getVisibilityText = (visibility?: string) => {
+  switch (visibility) {
+    case 'PUBLIC': return '公开'
+    case 'PRIVATE': return '私有'
+    default: return '未知'
+  }
 }
 
-// 删除专利
-const deletePatent = (row: PatentBase) => {
-  ElMessageBox.confirm(
-    `确定要删除专利 "${row.title}" 吗？`,
-    '删除确认',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      // 这里需要后端提供删除接口
-      // await patentApi.deletePatent(row.category as PatentCategory, row.publicNum)
-      ElMessage.success('删除成功')
-      searchPatents() // 重新搜索
-    } catch (error: any) {
-      ElMessage.error(error.message || '删除失败')
-    }
-  }).catch(() => {
-    // 用户取消操作
+// 搜索用户专利
+const searchUserPatents = () => {
+  currentPage.value = 1
+  loadUserPatents()
+}
+
+// 重置搜索
+const resetSearch = () => {
+  searchForm.query = ''
+  currentPage.value = 1
+  loadUserPatents()
+}
+
+// 刷新列表
+const refreshList = () => {
+  loadUserPatents()
+  ElMessage.success('列表已刷新')
+}
+
+// 显示上传对话框
+const showUploadDialog = () => {
+  uploadDialogTitle.value = '上传专利'
+  // 重置表单
+  Object.assign(patentForm, {
+    category: '',
+    title: '',
+    publicNum: '',
+    abstractText: '',
+    ipc: '',
+    cpc: '',
+    applicant: '',
+    inventor: '',
+    visibility: 'PUBLIC',
+    id: undefined
   })
+  uploadDialogVisible.value = true
 }
 
-// 打开新增对话框
-const openAddDialog = () => {
-  // 清空表单
-  Object.keys(patentForm).forEach(key => {
-    if (key !== 'category') {
-      (patentForm as any)[key] = ''
-    }
-  })
-  patentForm.category = ''
-  dialogTitle.value = '新增专利'
-  formDialogVisible.value = true
+// 关闭上传对话框
+const closeUploadDialog = () => {
+  uploadDialogVisible.value = false
+  patentFormRef.value?.clearValidate()
 }
 
-// 保存专利
-const savePatent = async () => {
+// 提交专利
+const submitPatent = async () => {
   if (!patentFormRef.value) return
   
   try {
     await patentFormRef.value.validate()
+    uploading.value = true
     
-    if (!patentForm.category) {
-      ElMessage.error('请选择专利类别')
-      return
-    }
-    
-    const params: PatentCreateUpdateParams = {
-      ...patentForm,
-      category: patentForm.category as PatentCategory
-    }
-    
-    await patentApi.createOrUpdatePatent(params)
-    ElMessage.success('保存成功')
-    closeFormDialog()
-    searchPatents() // 重新搜索
-  } catch (error: any) {
-    if (error.message === 'error fields') {
-      // 验证错误，已在验证器中提示
+    if (patentForm.id) {
+      // 编辑专利
+      await patentApi.updateUserPatent(patentForm.id, {
+        category: patentForm.category,
+        title: patentForm.title,
+        publicNum: patentForm.publicNum,
+        abstractText: patentForm.abstractText,
+        ipc: patentForm.ipc,
+        cpc: patentForm.cpc,
+        applicant: patentForm.applicant,
+        inventor: patentForm.inventor,
+        visibility: patentForm.visibility
+      })
+      ElMessage.success('专利更新成功')
     } else {
-      ElMessage.error(error.message || '保存失败')
+      // 上传新专利
+      await patentApi.createUserPatent({
+        category: patentForm.category,
+        title: patentForm.title,
+        publicNum: patentForm.publicNum,
+        abstractText: patentForm.abstractText,
+        ipc: patentForm.ipc,
+        cpc: patentForm.cpc,
+        applicant: patentForm.applicant,
+        inventor: patentForm.inventor,
+        visibility: patentForm.visibility
+      })
+      ElMessage.success('专利上传成功')
     }
+    
+    closeUploadDialog()
+    loadUserPatents() // 重新加载列表
+  } catch (error) {
+    console.error('提交专利失败:', error)
+    ElMessage.error('提交失败，请检查表单')
+  } finally {
+    uploading.value = false
   }
 }
 
-// 关闭详情对话框
-const closeDetailDialog = () => {
-  detailDialogVisible.value = false
-  currentPatent.value = {} as PatentBase
-}
-
-// 关闭表单对话框
-const closeFormDialog = () => {
-  formDialogVisible.value = false
-  if (patentFormRef.value) {
-    patentFormRef.value.resetFields()
+// 查看专利详情
+const viewPatent = async (patent: PatentFormData) => {
+  if (!patent.id) {
+    ElMessage.warning('无法获取专利详情')
+    return
+  }
+  
+  try {
+    const response = await patentApi.getUserPatentDetail(patent.id)
+    const detail = response.data
+    
+    ElMessageBox.alert(
+      `<div>
+        <p><strong>标题：</strong>${detail.title}</p>
+        <p><strong>类别：</strong>${detail.category}</p>
+        <p><strong>公开号：</strong>${detail.publicNum || '未填写'}</p>
+        <p><strong>摘要：</strong>${detail.abstractText || '未填写'}</p>
+        <p><strong>申请人：</strong>${detail.applicant || '未填写'}</p>
+        <p><strong>发明人：</strong>${detail.inventor || '未填写'}</p>
+        <p><strong>IPC分类：</strong>${detail.ipc || '未填写'}</p>
+        <p><strong>CPC分类：</strong>${detail.cpc || '未填写'}</p>
+        <p><strong>可见性：</strong>${getVisibilityText(detail.visibility)}</p>
+        <p><strong>创建时间：</strong>${detail.createdAt || '未知'}</p>
+      </div>`,
+      '专利详情',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '关闭'
+      }
+    )
+  } catch (error) {
+    console.error('获取专利详情失败:', error)
+    ElMessage.error('获取专利详情失败')
   }
 }
 
-// 分页相关方法
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  searchPatents()
+// 编辑专利
+const editPatent = (patent: PatentFormData) => {
+  uploadDialogTitle.value = '编辑专利'
+  Object.assign(patentForm, patent)
+  uploadDialogVisible.value = true
 }
 
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  searchPatents()
+// 删除专利
+const deletePatent = async (patent: PatentFormData) => {
+  if (!patent.id) {
+    ElMessage.warning('无法删除该专利')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除专利"${patent.title}"吗？此操作不可恢复。`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await patentApi.deleteUserPatentById(patent.id)
+    ElMessage.success('专利删除成功')
+    loadUserPatents() // 重新加载列表
+  } catch (error) {
+    // 用户取消删除
+    console.error('删除专利失败:', error)
+  }
 }
 
-// 初始化数据
+// 分页处理
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (page: number) => {
+  currentPage.value = page
+}
+
+// 页面加载时初始化
 onMounted(() => {
-  // 可以初始化加载默认数据，比如全部风能专利
-  // searchForm.category = 'wind'
-  // searchPatents()
+  console.log('专利管理页面已加载')
+  loadUserPatents()
 })
-</script>
 
-<style scoped>
+// 样式定义
+const styles = `
 .patent-manage-container {
   padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  margin: 0;
+  color: #303133;
+}
+
+.stats-section {
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.stat-content {
+  padding: 10px;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409EFF;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
 }
 
 .search-section {
-  background: #fff;
+  background: #f5f7fa;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  border-radius: 4px;
   margin-bottom: 20px;
 }
 
 .patent-list {
-  background: #fff;
+  background: white;
+  border-radius: 4px;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
 }
+`
 
-.abstract-content, .details-content {
-  white-space: pre-wrap;
-  line-height: 1.6;
-}
-</style>
+// 添加样式到页面
+const styleElement = document.createElement('style')
+styleElement.textContent = styles
+document.head.appendChild(styleElement)
+</script>

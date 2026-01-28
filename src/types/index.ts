@@ -44,26 +44,31 @@ export type BaseApiResponse<T = any> = ApiResponse<T>
 
 // 专利基础信息类型
 export interface PatentBase {
-  publicNum: string      // 公开号
-  title: string          // 标题
-  abstractText: string   // 摘要
-  applicant: string      // 申请人
-  inventor: string       // 发明人
-  ipc: string            // IPC分类
-  appliNum?: string      // 申请号
-  appliDate?: string     // 申请日
-  publicDate?: string    // 公布日
-  cpc?: string           // CPC分类
-  nec?: string           // NEC分类
-  legalStatus?: string   // 法律状态
-  latestLegalStatus?: string // 最新法律状态
-  status?: string        // 状态
-  type?: string          // 类型
-  applicantAddress?: string  // 申请人地址
-  patentee?: string      // 专利权人
-  patenteeAddress?: string   // 专利权人地址
-  agent?: string         // 代理机构/代理人
-  patentDetails?: string // 详情/全文
+  publicNum: string           // 公开号（主键）
+  legalStatus?: string        // 法律状态
+  latestLegalStatus?: string  // 最新法律状态
+  status?: string             // 状态
+  title: string               // 标题
+  type?: string               // 类型
+  abstractText: string        // 摘要
+  appliNum?: string           // 申请号
+  appliDate?: string          // 申请日期
+  publicDate?: string         // 公开日期
+  applicant: string           // 申请人
+  applicantAddress?: string   // 申请人地址
+  patentee?: string           // 专利权人
+  patenteeAddress?: string    // 专利权人地址
+  inventor: string            // 发明人
+  agent?: string              // 代理人
+  ipc: string                 // 国际专利分类
+  cpc?: string                // 共同专利分类
+  nec?: string                // 国家/地区代码
+  patentDetails?: string      // 专利详情
+}
+
+// 用户个人专利信息类型（包含类别信息）
+export interface UserPatent extends PatentBase {
+  category?: string           // 专利类别
 }
 
 // 专利类别枚举
@@ -71,8 +76,10 @@ export type PatentCategory = 'wind' | 'solar' | 'biomass' | 'hydrogen' | 'lilon'
 
 // 专利查询参数
 export interface PatentQueryParams {
-  category: PatentCategory
+  category?: string  // 后端接口中category是可选参数
   query?: string
+  page?: number
+  size?: number
 }
 
 // 专利创建/更新参数
@@ -140,6 +147,25 @@ export interface PersistPatentMatchParams {
     matchScore?: number
     matchReason?: string
   }>
+}
+
+// 分页对象类型
+export interface Pageable<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+  first: boolean
+  last: boolean
+  empty: boolean
+  pageable?: {
+    pageNumber: number
+    pageSize: number
+    offset: number
+    paged: boolean
+    unpaged: boolean
+  }
 }
 
 // 专家匹配持久化参数

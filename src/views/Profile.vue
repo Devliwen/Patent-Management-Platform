@@ -12,15 +12,15 @@
               :http-request="uploadAvatar"
               accept="image/*"
             >
-              <img v-if="userInfo.userProfile.avatar" :src="userInfo.userProfile.avatar" class="avatar" />
+              <img v-if="userInfo?.userProfile?.avatar" :src="userInfo?.userProfile?.avatar" class="avatar" />
               <el-avatar v-else :size="100" :style="{ backgroundColor: '#409eff' }" class="avatar-placeholder">
-                {{ getUserInitial(userInfo.userProfile.nickname || userInfo.userAccount.username) }}
+                {{ getUserInitial(userInfo?.userProfile?.nickname || userInfo?.userAccount?.username || '用户') }}
               </el-avatar>
             </el-upload>
             <div class="user-info-basic">
-              <h3>{{ userInfo.userProfile.nickname || userInfo.userAccount.username }}</h3>
-              <p class="username">@{{ userInfo.userAccount.username }}</p>
-              <el-tag type="info" size="small" style="margin-top: 8px;">{{ userInfo.userAccount.role }}</el-tag>
+              <h3>{{ userInfo?.userProfile?.nickname || userInfo?.userAccount?.username || '未登录用户' }}</h3>
+              <p class="username">@{{ userInfo?.userAccount?.username || 'unknown' }}</p>
+              <el-tag type="info" size="small" style="margin-top: 8px;">{{ userInfo?.userAccount?.role || '未知角色' }}</el-tag>
             </div>
           </div>
           
@@ -29,25 +29,25 @@
           <div class="user-details">
             <div class="detail-item">
               <el-icon><User /></el-icon>
-              <span>{{ userInfo.userProfile.realName || '未设置真实姓名' }}</span>
+              <span>{{ userInfo?.userProfile?.realName || '未设置真实姓名' }}</span>
             </div>
             <div class="detail-item">
               <el-icon><Message /></el-icon>
-              <span>{{ userInfo.userAccount.email || '未设置邮箱' }}</span>
+              <span>{{ userInfo?.userAccount?.email || '未设置邮箱' }}</span>
             </div>
             <div class="detail-item">
               <el-icon><Phone /></el-icon>
-              <span>{{ userInfo.userAccount.phone || '未设置手机号' }}</span>
+              <span>{{ userInfo?.userAccount?.phone || '未设置手机号' }}</span>
             </div>
-            <div class="detail-item" v-if="userInfo.userProfile.gender">
-              <el-icon><Female v-if="userInfo.userProfile.gender === 'female'" />
-                         <Male v-else-if="userInfo.userProfile.gender === 'male'" />
+            <div class="detail-item" v-if="userInfo?.userProfile?.gender">
+              <el-icon><Female v-if="userInfo?.userProfile?.gender === 'female'" />
+                         <Male v-else-if="userInfo?.userProfile?.gender === 'male'" />
                          <User v-else /></el-icon>
-              <span>{{ getGenderText(userInfo.userProfile.gender) }}</span>
+              <span>{{ getGenderText(userInfo?.userProfile?.gender || '') }}</span>
             </div>
-            <div class="detail-item" v-if="userInfo.userProfile.birthDate">
+            <div class="detail-item" v-if="userInfo?.userProfile?.birthDate">
               <el-icon><Calendar /></el-icon>
-              <span>{{ formatDate(userInfo.userProfile.birthDate) }}</span>
+              <span>{{ formatDate(userInfo?.userProfile?.birthDate || '') }}</span>
             </div>
           </div>
         </el-card>
@@ -169,7 +169,7 @@
                 </el-form-item>
               </el-tab-pane>
               
-              <el-tab-pane label="专家信息" name="expert" v-if="userInfo.expertProfile">
+              <el-tab-pane label="专家信息" name="expert" v-if="userInfo?.expertProfile">
                 <el-alert
                   title="专家资料"
                   type="info"
@@ -211,7 +211,7 @@
                 </div>
               </el-tab-pane>
               
-              <el-tab-pane label="机构信息" name="organization" v-if="userInfo.mainOrganization">
+              <el-tab-pane label="机构信息" name="organization" v-if="userInfo?.mainOrganization">
                 <el-alert
                   title="主机构信息"
                   type="info"
@@ -275,7 +275,7 @@ import {
 } from '@element-plus/icons-vue'
 
 // 用户信息
-const userInfo = ref<FullUserInfo>({} as FullUserInfo)
+const userInfo = ref<FullUserInfo | null>(null)
 const loading = ref(false)
 const isEditing = ref(false)
 const activeTab = ref('basic')
@@ -331,6 +331,7 @@ const getUserInitial = (name: string) => {
 
 // 获取性别文本
 const getGenderText = (gender: string) => {
+  if (!gender) return '未设置'
   const genderMap: Record<string, string> = {
     'male': '男',
     'female': '女',
@@ -341,7 +342,12 @@ const getGenderText = (gender: string) => {
 
 // 格式化日期
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('zh-CN')
+  if (!dateString) return '未设置'
+  try {
+    return new Date(dateString).toLocaleDateString('zh-CN')
+  } catch {
+    return '日期格式错误'
+  }
 }
 
 // 切换编辑状态
@@ -363,24 +369,24 @@ const loadUserInfo = async () => {
     userInfo.value = data
     
     // 初始化编辑表单
-    editForm.nickname = data.userProfile.nickname || ''
-    editForm.realName = data.userProfile.realName || ''
-    editForm.gender = data.userProfile.gender
-    editForm.birthDate = data.userProfile.birthDate || undefined
-    editForm.bio = data.userProfile.bio || ''
-    editForm.address = data.userProfile.address || ''
-    editForm.website = data.userProfile.website || ''
-    editForm.socialLinks = data.userProfile.socialLinks || {}
-    editForm.preferences = data.userProfile.preferences || {}
+    editForm.nickname = data?.userProfile?.nickname || ''
+    editForm.realName = data?.userProfile?.realName || ''
+    editForm.gender = data?.userProfile?.gender
+    editForm.birthDate = data?.userProfile?.birthDate || undefined
+    editForm.bio = data?.userProfile?.bio || ''
+    editForm.address = data?.userProfile?.address || ''
+    editForm.website = data?.userProfile?.website || ''
+    editForm.socialLinks = data?.userProfile?.socialLinks || {}
+    editForm.preferences = data?.userProfile?.preferences || {}
     
     // 用户账户信息
-    editForm.username = data.userAccount.username
-    editForm.role = data.userAccount.role
-    editForm.email = data.userAccount.email || ''
-    editForm.phone = data.userAccount.phone || ''
+    editForm.username = data?.userAccount?.username || ''
+    editForm.role = data?.userAccount?.role || ''
+    editForm.email = data?.userAccount?.email || ''
+    editForm.phone = data?.userAccount?.phone || ''
     
     // 专家信息
-    if (data.expertProfile) {
+    if (data?.expertProfile) {
       editForm.expertName = data.expertProfile.name
       editForm.expertField = data.expertProfile.field
       editForm.expertExpertise = data.expertProfile.expertise
@@ -388,7 +394,7 @@ const loadUserInfo = async () => {
     }
     
     // 机构信息
-    if (data.mainOrganization) {
+    if (data?.mainOrganization) {
       editForm.orgName = data.mainOrganization.name
       editForm.orgType = data.mainOrganization.type
       editForm.orgDescription = data.mainOrganization.description || ''
@@ -396,6 +402,7 @@ const loadUserInfo = async () => {
     }
   } catch (error: any) {
     ElMessage.error(error.message || '获取用户信息失败')
+    // 接口失败时，userInfo保持为null，模板会显示默认值
   } finally {
     loading.value = false
   }
