@@ -1,13 +1,1284 @@
-# 高校知识产权运营服务平台接口文档-V1.0（项目书全量规划版）
+# 高校知识产权运营服务平台接口文档-V7.0（合并版）
 
 ## 0. 说明
 
-> ## 1. 认证与用户基础接口（规划）
+### 0.0 请求网址（Base URL）
+
+> 说明：本文档中的“请求路径”均为相对路径，实际请求地址 = 请求网址 + 请求路径。
+
+| 环境 | 请求网址 | 备注 |
+| --- | --- | --- |
+| 本地(local) | http://localhost:8080 | 默认端口 |
+| 测试/生产 | https://<your-domain> | 按部署环境替换 |
+
+### 0.1 统一响应格式
+
+响应数据类型：application/json
+
+响应参数说明：
+
+| 名称    | 类型   | 是否必须 | 默认值 | 备注                  | 其他信息 |
+| ------- | ------ | -------- | ------ | --------------------- | -------- |
+| code    | number | 必须     |        | 响应码, 0-成功,1-失败 |          |
+| message | string | 非必须   |        | 提示信息              |          |
+| data    | any    | 非必须   |        | 返回的数据            |          |
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": null
+}
+```
+
+### 0.2 认证与授权（JWT）
+
+> 用户登录成功后，系统会下发 JWT 令牌；后续请求在 Header 携带 `Authorization: Bearer <token>`。
 >
-> ### 1.1 注册
+> 访问需要认证的接口但未登录时，HTTP 状态码为 401。
+
+---
+
+## 1. 认证与用户相关接口
+
+### 1.1 注册
+
+#### 1.1.1 基本信息
+
+> 请求路径：/api/auth/register
 >
-> #### 1.1.1 基本信息
+> 请求方式：POST
 >
+> 接口描述：注册新用户（写入 user_account），可同时写入 user_profile。
+
+#### 1.1.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注                     |
+| -------- | ------ | ------ | -------- | ------------------------ |
+| username | 用户名 | string | 是       | 唯一                     |
+| password | 密码   | string | 是       | 服务端保存 password_hash |
+| phone    | 手机   | string | 否       |                          |
+| email    | 邮箱   | string | 否       |                          |
+| nickname | 昵称   | string | 否       | 写入 user_profile        |
+
+请求数据样例：
+
+```json
+{
+  "username": "zhangsan",
+  "password": "123456",
+  "phone": "13800000000",
+  "email": "zhangsan@example.com",
+  "nickname": "张三"
+}
+```
+
+#### 1.1.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "userId": 1
+  }
+}
+```
+
+### 1.2 登录
+
+#### 1.2.1 基本信息
+
+> 请求路径：/api/auth/login
+>
+> 请求方式：POST
+>
+> 接口描述：登录成功后返回 JWT token 字符串。
+
+#### 1.2.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| username | 用户名 | string | 是       |      |
+| password | 密码   | string | 是       |      |
+
+请求数据样例：
+
+```json
+{
+  "username": "zhangsan",
+  "password": "123456"
+}
+```
+
+#### 1.2.3 响应数据
+
+响应数据类型：application/json
+
+响应参数说明：
+
+| 名称 | 类型   | 是否必须 | 默认值 | 备注               | 其他信息 |
+| ---- | ------ | -------- | ------ | ------------------ | -------- |
+| data | string | 必须     |        | 返回的数据,jwt令牌 |          |
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": "jwt-token-string"
+}
+```
+
+#### 1.2.4 备注说明
+
+> 用户登录成功后，客户端需在后续每次请求 Header 中携带：Authorization: Bearer <token>。
+
+### 1.3 获取当前用户信息
+
+#### 1.3.1 基本信息
+
+> 请求路径：/api/users/me
+>
+> 请求方式：GET
+>
+> 接口描述：返回 user_account + user_profile + expert_profile(如有) + 主机构(如有)。
+>
+> 认证要求：需要登录
+
+#### 1.3.2 请求参数
+
+无
+
+#### 1.3.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例（字段可能因数据存在与否而为 null）：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "user": {
+      "id": 1,
+      "username": "zhangsan",
+      "phone": "13800000000",
+      "email": "zhangsan@example.com"
+    },
+    "profile": {
+      "userId": 1,
+      "nickname": "张三",
+      "avatarUrl": null,
+      "realName": null,
+      "idNumber": null
+    },
+    "expertProfile": null,
+    "primaryOrganization": null
+  }
+}
+```
+
+### 1.4 更新用户资料
+
+#### 1.4.1 基本信息
+
+> 请求路径：/api/users/me/profile
+>
+> 请求方式：PUT
+>
+> 接口描述：更新 user_profile（昵称、头像、实名信息等）。
+>
+> 认证要求：需要登录
+
+#### 1.4.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：
+
+| 参数名称  | 说明    | 类型   | 是否必须 | 备注 |
+| --------- | ------- | ------ | -------- | ---- |
+| nickname  | 昵称    | string | 否       |      |
+| avatarUrl | 头像URL | string | 否       |      |
+| realName  | 实名    | string | 否       |      |
+| idNumber  | 证件号  | string | 否       |      |
+
+请求数据样例：
+
+```json
+{
+  "nickname": "新昵称",
+  "avatarUrl": "https://example.com/avatar.png",
+  "realName": "张三",
+  "idNumber": "130***********1234"
+}
+```
+
+#### 1.4.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "userId": 1,
+    "nickname": "新昵称"
+  }
+}
+```
+
+---
+
+## 2. 公共专利库接口（多表）
+
+### 2.1 查询专利（按类别）
+
+#### 2.1.1 基本信息
+
+> 请求路径：/api/patents
+>
+> 请求方式：GET
+>
+> 接口描述：按 category 指定分表查询专利；query 为空返回该分表分页数据，query 不为空按标题/摘要/申请人/发明人查询。
+
+#### 2.1.2 请求参数
+
+请求参数格式：queryString
+
+请求参数说明：
+
+| 参数名称 | 说明       | 类型   | 是否必须 | 备注                              |
+| -------- | ---------- | ------ | -------- | --------------------------------- |
+| category | 专利类别   | string | 是       | wind/solar/biomass/hydrogen/lilon |
+| query    | 查询关键字 | string | 否       | 为空返回该类别分页列表            |
+| page     | 页码       | number | 否       | 默认 0                            |
+| size     | 每页条数   | number | 否       | 默认 10                           |
+
+请求数据样例：
+
+```shell
+GET /api/patents?category=wind&query=人工智能&page=0&size=10
+GET /api/patents?category=wind&page=0&size=10
+```
+
+#### 2.1.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例（data 为分页对象）：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "content": [
+      {
+        "publicNum": "CN123456789A",
+        "title": "一种用于……的方法",
+        "abstractText": "本发明公开了……",
+        "applicant": "某某科技有限公司",
+        "inventor": "张三",
+        "ipc": "G06F 16/00"
+      }
+    ],
+    "totalElements": 1,
+    "totalPages": 1,
+    "number": 0,
+    "size": 10
+  }
+}
+```
+
+### 2.2 创建/更新专利（按类别）
+
+#### 2.2.1 基本信息
+
+> 请求路径：/api/patents
+>
+> 请求方式：POST
+>
+> 接口描述：向 category 对应分表写入专利数据；publicNum 为主键，重复会覆盖更新。
+
+#### 2.2.2 请求参数
+
+请求参数格式：queryString + application/json
+
+请求参数说明（QueryString）：
+
+| 参数名称 | 说明     | 类型   | 是否必须 | 备注                              |
+| -------- | -------- | ------ | -------- | --------------------------------- |
+| category | 专利类别 | string | 是       | wind/solar/biomass/hydrogen/lilon |
+
+请求参数说明（Body，字段与 PatentUpsertRequest 对齐，以下为常用字段）：
+
+| 参数名称     | 说明   | 类型   | 是否必须 | 备注 |
+| ------------ | ------ | ------ | -------- | ---- |
+| publicNum    | 公开号 | string | 是       | 主键 |
+| title        | 标题   | string | 否       |      |
+| abstractText | 摘要   | string | 否       |      |
+| applicant    | 申请人 | string | 否       |      |
+| inventor     | 发明人 | string | 否       |      |
+| ipc          | IPC    | string | 否       |      |
+| cpc          | CPC    | string | 否       |      |
+| nec          | NEC    | string | 否       |      |
+
+请求数据样例：
+
+```shell
+POST /api/patents?category=wind
+```
+
+```json
+{
+  "publicNum": "CN123456789A",
+  "title": "一种用于专利匹配的方法",
+  "abstractText": "本发明公开了……",
+  "ipc": "G06F 16/00",
+  "inventor": "张三",
+  "applicant": "某某科技有限公司"
+}
+```
+
+#### 2.2.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "publicNum": "CN123456789A",
+    "title": "一种用于专利匹配的方法"
+  }
+}
+```
+
+### 2.3 获取单条专利（按类别 + 公开号）
+
+#### 2.3.1 基本信息
+
+> 请求路径：/api/patents/{category}/{publicNum}
+>
+> 请求方式：GET
+>
+> 接口描述：根据 category + publicNum 获取单条专利记录。
+
+#### 2.3.2 请求参数
+
+请求参数格式：path
+
+请求参数说明：
+
+| 参数名称  | 说明     | 类型   | 是否必须 | 备注                              |
+| --------- | -------- | ------ | -------- | --------------------------------- |
+| category  | 专利类别 | string | 是       | wind/solar/biomass/hydrogen/lilon |
+| publicNum | 公开号   | string | 是       |                                   |
+
+请求数据样例：
+
+```shell
+GET /api/patents/wind/CN123456789A
+```
+
+#### 2.3.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "publicNum": "CN123456789A",
+    "title": "一种用于……的方法"
+  }
+}
+```
+
+---
+
+## 3. 个人专利管理接口
+
+### 3.1 上传个人专利
+
+#### 3.1.1 基本信息
+
+> 请求路径：/api/user-patents
+>
+> 请求方式：POST
+>
+> 接口描述：上传个人专利记录（ownerUserId 自动取当前登录用户）。
+>
+> 认证要求：需要登录
+
+#### 3.1.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明（字段与 UserPatentUpsertRequest 对齐，以下为常用字段）：
+
+| 参数名称      | 说明      | 类型   | 是否必须 | 备注                         |
+| ------------- | --------- | ------ | -------- | ---------------------------- |
+| category      | 专利类别  | string | 是       |                              |
+| title         | 标题      | string | 是       |                              |
+| publicNum     | 公开号    | string | 否       |                              |
+| abstractText  | 摘要      | string | 否       |                              |
+| applicant     | 申请人    | string | 否       |                              |
+| inventor      | 发明人    | string | 否       |                              |
+| patentDetails | 详情/全文 | string | 否       |                              |
+| visibility    | 可见性    | string | 否       | PUBLIC/PRIVATE，默认 PUBLIC |
+
+请求数据样例：
+
+```json
+{
+  "category": "solar",
+  "title": "高效太阳能板",
+  "publicNum": "CN987654",
+  "visibility": "PUBLIC",
+  "abstractText": "……"
+}
+```
+
+#### 3.1.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "id": 1,
+    "ownerUserId": 1001,
+    "category": "solar",
+    "title": "高效太阳能板",
+    "visibility": "PUBLIC"
+  }
+}
+```
+
+### 3.2 查看个人专利列表
+
+#### 3.2.1 基本信息
+
+> 请求路径：/api/user-patents
+>
+> 请求方式：GET
+>
+> 接口描述：owner=me 查看“我的专利”；不传 owner 查看所有公开个人专利。
+>
+> 认证要求：需要登录
+
+#### 3.2.2 请求参数
+
+请求参数格式：queryString
+
+请求参数说明：
+
+| 参数名称   | 说明       | 类型   | 是否必须 | 备注                                 |
+| ---------- | ---------- | ------ | -------- | ------------------------------------ |
+| owner      | 所属       | string | 否       | 传 me 表示当前用户                   |
+| query      | 查询关键字 | string | 否       | 在 title/abstract/applicant/inventor 中搜索 |
+| category   | 专利类别   | string | 否       |                                      |
+| visibility | 可见性     | string | 否       | PUBLIC/PRIVATE                       |
+
+请求数据样例：
+
+```shell
+GET /api/user-patents?owner=me
+GET /api/user-patents?query=新能源
+```
+
+#### 3.2.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": [
+    {
+      "id": 1,
+      "category": "solar",
+      "title": "高效太阳能板",
+      "visibility": "PUBLIC"
+    }
+  ]
+}
+```
+
+### 3.3 查看个人专利详情
+
+#### 3.3.1 基本信息
+
+> 请求路径：/api/user-patents/{id}
+>
+> 请求方式：GET
+>
+> 接口描述：本人可查看自己的全部；非本人仅可查看 PUBLIC。
+>
+> 认证要求：需要登录
+
+#### 3.3.2 请求参数
+
+请求参数格式：path
+
+| 参数名称 | 说明 | 类型   | 是否必须 | 备注 |
+| -------- | ---- | ------ | -------- | ---- |
+| id       | ID   | number | 是       |      |
+
+#### 3.3.3 响应数据
+
+响应数据类型：application/json
+
+### 3.4 修改个人专利
+
+#### 3.4.1 基本信息
+
+> 请求路径：/api/user-patents/{id}
+>
+> 请求方式：PUT
+>
+> 接口描述：仅本人可修改。
+>
+> 认证要求：需要登录
+
+#### 3.4.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：与“上传个人专利”相同，按需传字段即可。
+
+#### 3.4.3 响应数据
+
+响应数据类型：application/json
+
+### 3.5 删除个人专利
+
+#### 3.5.1 基本信息
+
+> 请求路径：/api/user-patents/{id}
+>
+> 请求方式：DELETE
+>
+> 接口描述：仅本人可删除。
+>
+> 认证要求：需要登录
+
+#### 3.5.2 请求参数
+
+请求参数格式：path
+
+| 参数名称 | 说明 | 类型   | 是否必须 | 备注 |
+| -------- | ---- | ------ | -------- | ---- |
+| id       | ID   | number | 是       |      |
+
+#### 3.5.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": null
+}
+```
+
+---
+
+## 4. 专家相关接口
+
+### 4.1 查询专家
+
+#### 4.1.1 基本信息
+
+> 请求路径：/api/experts
+>
+> 请求方式：GET
+>
+> 接口描述：query 为空返回所有已通过认证(APPROVED)专家；query 不为空按真实姓名/领域/专长模糊查询。
+
+#### 4.1.2 请求参数
+
+请求参数格式：queryString
+
+| 参数名称 | 说明       | 类型   | 是否必须 | 备注 |
+| -------- | ---------- | ------ | -------- | ---- |
+| query    | 查询关键字 | string | 否       |      |
+
+#### 4.1.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例（返回 ExpertProfile 列表）：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": [
+    {
+      "userId": 1,
+      "field": "人工智能",
+      "expertise": "知识图谱",
+      "contactInfo": "13800000000",
+      "certStatus": "APPROVED"
+    }
+  ]
+}
+```
+
+### 4.2 申请/更新专家资料（提交认证）
+
+#### 4.2.1 基本信息
+
+> 请求路径：/api/experts/me
+>
+> 请求方式：PUT
+>
+> 接口描述：当前登录用户提交/更新专家资料，状态会设置为 PENDING。
+>
+> 认证要求：需要登录
+
+#### 4.2.2 请求参数
+
+请求参数格式：application/json
+
+| 参数名称     | 说明     | 类型   | 是否必须 | 备注 |
+| ------------ | -------- | ------ | -------- | ---- |
+| field        | 领域     | string | 否       |      |
+| expertise    | 专长     | string | 否       |      |
+| achievements | 成果     | string | 否       |      |
+| contactInfo  | 联系方式 | string | 否       |      |
+
+#### 4.2.3 响应数据
+
+响应数据类型：application/json
+
+### 4.3 审核专家（管理员）
+
+#### 4.3.1 基本信息
+
+> 请求路径：/api/admin/experts/{userId}/audit
+>
+> 请求方式：POST
+>
+> 接口描述：审核专家资料（APPROVED/REJECTED/PENDING）。
+>
+> 认证要求：需要登录
+
+#### 4.3.2 请求参数
+
+请求参数格式：path + application/json
+
+Path 参数：
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| userId   | 用户ID | number | 是       |      |
+
+Body 参数：
+
+| 参数名称  | 说明     | 类型   | 是否必须 | 备注 |
+| --------- | -------- | ------ | -------- | ---- |
+| certStatus| 审核结果 | string | 是       | APPROVED/REJECTED/PENDING |
+
+请求数据样例：
+
+```json
+{
+  "certStatus": "APPROVED"
+}
+```
+
+---
+
+## 5. 需求与匹配相关接口
+
+### 5.1 创建需求
+
+#### 5.1.1 基本信息
+
+> 请求路径：/api/requirements
+>
+> 请求方式：POST
+>
+> 接口描述：发布一条需求记录。
+>
+> 认证要求：需要登录
+
+#### 5.1.2 请求参数
+
+请求参数格式：application/json
+
+| 参数名称        | 说明         | 类型   | 是否必须 | 备注 |
+| --------------- | ------------ | ------ | -------- | ---- |
+| title           | 标题         | string | 是       |      |
+| description     | 详情         | string | 否       |      |
+| keywords        | 关键词       | string | 否       | 用于匹配 |
+| techDirection   | 技术方向     | string | 否       |      |
+| cooperationMode | 合作模式     | string | 否       |      |
+| requesterOrgId  | 需求方机构ID | number | 否       |      |
+
+请求数据样例：
+
+```json
+{
+  "title": "设备预测性维护",
+  "keywords": "预测性维护,异常检测",
+  "techDirection": "时序异常检测",
+  "cooperationMode": "技术转让"
+}
+```
+
+#### 5.1.3 响应数据
+
+响应数据类型：application/json
+
+### 5.2 需求匹配专利
+
+#### 5.2.1 基本信息
+
+> 请求路径：/api/requirements/{id}/match-patents
+>
+> 请求方式：GET
+>
+> 接口描述：基于需求 keywords 或 title 在 5 张公共专利表 + 用户专利中检索匹配。
+>
+> 认证要求：需要登录
+
+#### 5.2.2 请求参数
+
+请求参数格式：path
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| id       | 需求ID | number | 是       |      |
+
+#### 5.2.3 响应数据
+
+响应数据类型：application/json
+
+响应数据样例（返回 PatentMatchResult 列表）：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": [
+    {
+      "patentSource": "EXTERNAL",
+      "category": "wind",
+      "publicNum": "CN123456789A",
+      "userPatentId": null,
+      "title": "一种用于……的方法",
+      "applicant": "某某科技有限公司",
+      "inventor": "张三"
+    }
+  ]
+}
+```
+
+### 5.3 需求匹配专家
+
+#### 5.3.1 基本信息
+
+> 请求路径：/api/requirements/{id}/match-experts
+>
+> 请求方式：GET
+>
+> 接口描述：在已通过认证的专家资料中按关键词匹配。
+>
+> 认证要求：需要登录
+
+#### 5.3.2 请求参数
+
+请求参数格式：path
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| id       | 需求ID | number | 是       |      |
+
+#### 5.3.3 响应数据
+
+响应数据类型：application/json
+
+### 5.4 保存专利匹配结果
+
+#### 5.4.1 基本信息
+
+> 请求路径：/api/requirements/{id}/match-patents/persist
+>
+> 请求方式：POST
+>
+> 接口描述：将匹配到的专利结果写入 requirement_patent_match。
+>
+> 认证要求：需要登录
+
+#### 5.4.2 请求参数
+
+请求参数格式：path + application/json
+
+Path 参数：
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| id       | 需求ID | number | 是       |      |
+
+Body 参数：
+
+| 参数名称          | 说明       | 类型   | 是否必须 | 备注                              |
+| ----------------- | ---------- | ------ | -------- | --------------------------------- |
+| items             | 匹配项列表 | array  | 是       |                                   |
+| \|-patentCategory  | 专利类别   | string | 是       | wind/solar/biomass/hydrogen/lilon |
+| \|-patentPublicNum | 公开号     | string | 是       |                                   |
+| \|-matchScore      | 分数       | number | 否       |                                   |
+| \|-matchReason     | 原因       | string | 否       |                                   |
+
+请求数据样例：
+
+```json
+{
+  "items": [
+    {
+      "patentCategory": "wind",
+      "patentPublicNum": "CN123456789A",
+      "matchScore": 0.912,
+      "matchReason": "关键词命中"
+    }
+  ]
+}
+```
+
+#### 5.4.3 响应数据
+
+响应数据类型：application/json
+
+### 5.5 保存专家匹配结果
+
+#### 5.5.1 基本信息
+
+> 请求路径：/api/requirements/{id}/match-experts/persist
+>
+> 请求方式：POST
+>
+> 接口描述：将匹配到的专家结果写入 requirement_expert_match。
+>
+> 认证要求：需要登录
+
+#### 5.5.2 请求参数
+
+请求参数格式：path + application/json
+
+请求数据样例：
+
+```json
+{
+  "items": [
+    {
+      "expertId": 1,
+      "matchScore": 0.855,
+      "matchReason": "expertise 匹配"
+    }
+  ]
+}
+```
+
+---
+
+## 6. 专利转化成果接口
+
+### 6.1 查询全部成果
+
+#### 6.1.1 基本信息
+
+> 请求路径：/api/transformations
+>
+> 请求方式：GET
+>
+> 接口描述：查询全部转化成果记录（transformation_result）。
+
+#### 6.1.2 请求参数
+
+无
+
+#### 6.1.3 响应数据
+
+响应数据类型：application/json
+
+### 6.2 创建成果记录
+
+#### 6.2.1 基本信息
+
+> 请求路径：/api/transformations
+>
+> 请求方式：POST
+>
+> 接口描述：新增一条转化成果记录。
+
+#### 6.2.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：字段与 TransformationResult 对齐。
+
+#### 6.2.3 响应数据
+
+响应数据类型：application/json
+
+---
+
+## 7. 专利价值评估接口
+
+### 7.1 生成评估报告
+
+#### 7.1.1 基本信息
+
+> 请求路径：/api/valuations
+>
+> 请求方式：POST
+>
+> 接口描述：对指定专利生成价值评估报告并保存（写入 patent_valuation_report）。
+
+#### 7.1.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：
+
+| 参数名称        | 说明       | 类型   | 是否必须 | 备注 |
+| --------------- | ---------- | ------ | -------- | ---- |
+| patentSource    | 专利来源   | string | 是       | EXTERNAL/USER |
+| patentCategory  | 专利类别   | string | 否       | source=EXTERNAL 必填 |
+| patentPublicNum | 公开号     | string | 否       | source=EXTERNAL 必填 |
+| userPatentId    | 用户专利ID | number | 否       | source=USER 必填 |
+| modelVersion    | 模型版本   | string | 否       |      |
+
+#### 7.1.3 响应数据
+
+响应数据类型：application/json
+
+### 7.2 查询评估报告列表
+
+#### 7.2.1 基本信息
+
+> 请求路径：/api/valuations
+>
+> 请求方式：GET
+>
+> 接口描述：按专利定位信息查询报告列表。
+
+#### 7.2.2 请求参数
+
+请求参数格式：queryString
+
+| 参数名称        | 说明       | 类型   | 是否必须 | 备注 |
+| --------------- | ---------- | ------ | -------- | ---- |
+| patentSource    | 专利来源   | string | 是       | EXTERNAL/USER |
+| patentCategory  | 专利类别   | string | 否       | source=EXTERNAL 必填 |
+| patentPublicNum | 公开号     | string | 否       | source=EXTERNAL 必填 |
+| userPatentId    | 用户专利ID | number | 否       | source=USER 必填 |
+
+### 7.3 维护评估模型参数
+
+#### 7.3.1 基本信息
+
+> 请求路径：/api/valuation-params/{key}
+>
+> 请求方式：PUT
+>
+> 接口描述：更新评估模型参数（写入 patent_valuation_model_param）。
+
+#### 7.3.2 请求参数
+
+请求参数格式：path + application/json
+
+Body 参数：
+
+| 参数名称    | 说明     | 类型   | 是否必须 | 备注 |
+| ----------- | -------- | ------ | -------- | ---- |
+| paramValue  | 参数值   | string | 否       |      |
+| description | 参数描述 | string | 否       |      |
+
+---
+
+## 8. 机构相关接口
+
+### 8.1 创建机构
+
+#### 8.1.1 基本信息
+
+> 请求路径：/api/organizations
+>
+> 请求方式：POST
+>
+> 接口描述：创建机构记录。
+
+#### 8.1.2 请求参数
+
+请求参数格式：application/json
+
+请求参数说明：
+
+| 参数名称     | 说明         | 类型   | 是否必须 | 备注 |
+| ------------ | ------------ | ------ | -------- | ---- |
+| name         | 机构名称     | string | 是       |      |
+| type         | 机构类型     | string | 是       |      |
+| creditCode   | 统一信用代码 | string | 否       |      |
+| address      | 地址         | string | 否       |      |
+| contactName  | 联系人       | string | 否       |      |
+| contactPhone | 联系电话     | string | 否       |      |
+| contactEmail | 联系邮箱     | string | 否       |      |
+
+#### 8.1.3 响应数据
+
+响应数据类型：application/json
+
+### 8.2 查询机构
+
+#### 8.2.1 基本信息
+
+> 请求路径：/api/organizations
+>
+> 请求方式：GET
+>
+> 接口描述：按名称关键字与类型筛选机构。
+
+#### 8.2.2 请求参数
+
+请求参数格式：queryString
+
+| 参数名称 | 说明       | 类型   | 是否必须 | 备注 |
+| -------- | ---------- | ------ | -------- | ---- |
+| query    | 名称关键字 | string | 否       |      |
+| type     | 机构类型   | string | 否       |      |
+
+#### 8.2.3 响应数据
+
+响应数据类型：application/json
+
+### 8.3 加入/设置机构成员关系
+
+#### 8.3.1 基本信息
+
+> 请求路径：/api/organizations/{orgId}/members
+>
+> 请求方式：POST
+>
+> 接口描述：当前用户加入机构或更新与机构的关系（可设置主机构）。
+
+#### 8.3.2 请求参数
+
+请求参数格式：path + application/json
+
+Path 参数：
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| orgId    | 机构ID | number | 是       |      |
+
+Body 参数：
+
+| 参数名称      | 说明       | 类型    | 是否必须 | 备注 |
+| ------------- | ---------- | ------- | -------- | ---- |
+| relationType  | 关系类型   | string  | 否       |      |
+| positionTitle | 职位/头衔  | string  | 否       |      |
+| isPrimary     | 是否主机构 | boolean | 否       | true/false |
+
+---
+
+## 9. 通知相关接口
+
+### 9.1 查询通知列表
+
+#### 9.1.1 基本信息
+
+> 请求路径：/api/notifications
+>
+> 请求方式：GET
+>
+> 接口描述：查询当前用户通知；可按 read 过滤。
+
+#### 9.1.2 请求参数
+
+请求参数格式：queryString
+
+| 参数名称 | 说明         | 类型    | 是否必须 | 备注 |
+| -------- | ------------ | ------- | -------- | ---- |
+| read     | 是否已读过滤 | boolean | 否       |      |
+
+#### 9.1.3 响应数据
+
+响应数据类型：application/json
+
+### 9.2 创建通知
+
+#### 9.2.1 基本信息
+
+> 请求路径：/api/notifications
+>
+> 请求方式：POST
+>
+> 接口描述：创建一条用户通知（用于系统推送/匹配提醒等）。
+
+#### 9.2.2 请求参数
+
+请求参数格式：application/json
+
+| 参数名称             | 说明       | 类型   | 是否必须 | 备注 |
+| -------------------- | ---------- | ------ | -------- | ---- |
+| userId               | 用户ID     | number | 是       |      |
+| type                 | 类型       | string | 是       |      |
+| title                | 标题       | string | 否       |      |
+| content              | 内容       | string | 否       |      |
+| relatedRequirementId | 关联需求ID | number | 否       |      |
+
+### 9.3 标记通知为已读
+
+#### 9.3.1 基本信息
+
+> 请求路径：/api/notifications/{id}/read
+>
+> 请求方式：PUT
+>
+> 接口描述：将当前用户的通知标记为已读。
+
+---
+
+## 10. 审计日志接口
+
+### 10.1 查询审计日志
+
+#### 10.1.1 基本信息
+
+> 请求路径：/api/audit-logs
+>
+> 请求方式：GET
+>
+> 接口描述：按 userId/action/from/to 过滤查询审计日志。
+
+#### 10.1.2 请求参数
+
+请求参数格式：queryString
+
+| 参数名称 | 说明       | 类型   | 是否必须 | 备注               |
+| -------- | ---------- | ------ | -------- | ------------------ |
+| userId   | 用户ID     | number | 否       |                    |
+| action   | 动作关键字 | string | 否       |                    |
+| from     | 起始时间   | string | 否       | LocalDateTime 格式 |
+| to       | 结束时间   | string | 否       | LocalDateTime 格式 |
+
+#### 10.1.3 响应数据
+
+响应数据类型：application/json
+
+---
+
+## 11. 数据同步任务接口
+
+### 11.1 创建同步任务
+
+#### 11.1.1 基本信息
+
+> 请求路径：/api/sync-jobs
+>
+> 请求方式：POST
+>
+> 接口描述：创建一条数据同步任务记录。
+
+#### 11.1.2 请求参数
+
+请求参数格式：application/json
+
+| 参数名称       | 说明     | 类型   | 是否必须 | 备注 |
+| -------------- | -------- | ------ | -------- | ---- |
+| jobType        | 任务类型 | string | 是       |      |
+| targetCategory | 目标类别 | string | 否       |      |
+| source         | 数据来源 | string | 否       |      |
+
+#### 11.1.3 响应数据
+
+响应数据类型：application/json
+
+### 11.2 查询同步任务列表
+
+#### 11.2.1 基本信息
+
+> 请求路径：/api/sync-jobs
+>
+> 请求方式：GET
+>
+> 接口描述：mine=true 仅返回本人创建的任务。
+
+#### 11.2.2 请求参数
+
+请求参数格式：queryString
+
+| 参数名称 | 说明     | 类型    | 是否必须 | 备注 |
+| -------- | -------- | ------- | -------- | ---- |
+| mine     | 是否仅本人 | boolean | 否       |      |
+
+#### 11.2.3 响应数据
+
+响应数据类型：application/json
+
+### 11.3 查询同步任务详情
+
+#### 11.3.1 基本信息
+
+> 请求路径：/api/sync-jobs/{id}
+>
+> 请求方式：GET
+>
+> 接口描述：查询任务详情。
+
+#### 11.3.2 请求参数
+
+请求参数格式：path
+
+| 参数名称 | 说明   | 类型   | 是否必须 | 备注 |
+| -------- | ------ | ------ | -------- | ---- |
+| id       | 任务ID | number | 是       |      |
+
+#### 11.3.3 响应数据
+
+响应数据类型：application/json
 > > 请求路径：/api/auth/register
 > >
 > > 请求方式：POST

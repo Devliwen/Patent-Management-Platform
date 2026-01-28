@@ -22,6 +22,7 @@ D:\patent\patent\src\main\java\org\ihebut\patent\patent\controller\UserPatentCon
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\mapper\RequirementExpertMatchMapper.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\mapper\RequirementMapper.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\NotificationCreateRequest.java
+D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\RequirementPatentMatchPersistRequest.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\mapper\RolePermissionMapper.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\entity\UserPatent.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\mapper\PatentHydrogenMapper.java
@@ -42,7 +43,10 @@ D:\patent\patent\src\main\java\org\ihebut\patent\patent\mapper\ExpertProfileMapp
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\ExpertMatchResult.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\entity\RolePermissionId.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\entity\UserRole.java
+D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\ValuationParamUpdateRequest.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\entity\PatentBiomass.java
+D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\ExpertCreateRequest.java
+D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\RequirementExpertMatchPersistRequest.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\entity\UserRoleId.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\service\PatentTableService.java
 D:\patent\patent\src\main\java\org\ihebut\patent\patent\dto\ExpertProfileUpdateRequest.java

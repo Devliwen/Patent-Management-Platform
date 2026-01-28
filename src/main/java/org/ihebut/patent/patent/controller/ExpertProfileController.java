@@ -2,6 +2,7 @@ package org.ihebut.patent.patent.controller;
 
 import org.ihebut.patent.patent.dto.ApiResponse;
 import org.ihebut.patent.patent.dto.ExpertAuditRequest;
+import org.ihebut.patent.patent.dto.ExpertCreateRequest;
 import org.ihebut.patent.patent.dto.ExpertProfileUpdateRequest;
 import org.ihebut.patent.patent.entity.ExpertProfile;
 import org.ihebut.patent.patent.entity.UserAccount;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
@@ -27,6 +29,52 @@ public class ExpertProfileController {
         this.currentUser = currentUser;
         this.expertProfileMapper = expertProfileMapper;
         this.userAccountMapper = userAccountMapper;
+    }
+
+    @PostMapping("/experts")
+    @Transactional
+    public ApiResponse<ExpertProfile> create(@RequestBody ExpertCreateRequest request) {
+        long auditorId = currentUser.requireUserId();
+        if (request == null || request.getUserId() == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "userId不能为空");
+        }
+        UserAccount user = userAccountMapper.findById(request.getUserId()).orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "用户不存在"));
+        ExpertProfile profile = expertProfileMapper.findById(request.getUserId()).orElse(null);
+        if (profile == null) {
+            profile = new ExpertProfile();
+            profile.setUser(user);
+        }
+        if (request.getField() != null) profile.setField(request.getField());
+        if (request.getExpertise() != null) profile.setExpertise(request.getExpertise());
+        if (request.getAchievements() != null) profile.setAchievements(request.getAchievements());
+        if (request.getContactInfo() != null) profile.setContactInfo(request.getContactInfo());
+
+        String status = (request.getCertStatus() == null || request.getCertStatus().isBlank()) ? "APPROVED" : request.getCertStatus().trim().toUpperCase();
+        if (!status.equals("APPROVED") && !status.equals("REJECTED") && !status.equals("PENDING")) {
+            throw new ResponseStatusException(BAD_REQUEST, "certStatus不合法");
+        }
+        profile.setCertStatus(status);
+        profile.setCertSubmitAt(LocalDateTime.now());
+        if (!"PENDING".equals(status)) {
+            profile.setCertAuditAt(LocalDateTime.now());
+            profile.setCertAuditBy(auditorId);
+        } else {
+            profile.setCertAuditAt(null);
+            profile.setCertAuditBy(null);
+        }
+        return ApiResponse.ok(expertProfileMapper.save(profile));
+    }
+
+    @GetMapping("/experts")
+    public ApiResponse<List<ExpertProfile>> list(@RequestParam(required = false) String query) {
+        String q = query == null ? "" : query.trim();
+        List<ExpertProfile> list;
+        if (q.isEmpty()) {
+            list = expertProfileMapper.findByCertStatus("APPROVED");
+        } else {
+            list = expertProfileMapper.searchExperts("APPROVED", q);
+        }
+        return ApiResponse.ok(list);
     }
 
     @PutMapping("/experts/me")

@@ -4,54 +4,57 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.Instant;
 import java.util.Date;
 
-@Component
+@Service
 public class JwtService {
+
     private final SecretKey key;
-    private final long expirationSeconds;
+    private final long expirationMs;
 
     public JwtService(
-            @Value("${app.jwt.secret:change-me}") String secret,
-            @Value("${app.jwt.expiration-seconds:86400}") long expirationSeconds
+            @Value("${jwt.secret:}") String secret,
+            @Value("${jwt.expirationMs:86400000}") long expirationMs
     ) {
-        this.key = Keys.hmacShaKeyFor(sha256(secret));
-        this.expirationSeconds = expirationSeconds;
+        this.expirationMs = expirationMs;
+        if (secret == null || secret.isBlank()) {
+            this.key = Jwts.SIG.HS256.key().build();
+        } else {
+            this.key = Keys.hmacShaKeyFor(normalizeSecret(secret).getBytes(StandardCharsets.UTF_8));
+        }
     }
 
-    public String createToken(long userId) {
-        Instant now = Instant.now();
-        Instant exp = now.plusSeconds(expirationSeconds);
+    public String createToken(Long userId) {
         return Jwts.builder()
-                .subject(Long.toString(userId))
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(exp))
+                .subject(userId.toString())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(key)
                 .compact();
     }
 
-    public Long parseUserId(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        String sub = claims.getSubject();
-        return sub == null ? null : Long.parseLong(sub);
+    public Long parseToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return Long.parseLong(claims.getSubject());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    private static byte[] sha256(String secret) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return md.digest(secret.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
+    private static String normalizeSecret(String secret) {
+        String s = secret.trim();
+        if (s.length() >= 32) return s;
+        StringBuilder sb = new StringBuilder(s);
+        while (sb.length() < 32) sb.append('0');
+        return sb.toString();
     }
 }

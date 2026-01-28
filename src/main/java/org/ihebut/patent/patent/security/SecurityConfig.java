@@ -2,8 +2,8 @@ package org.ihebut.patent.patent.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,6 +13,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
     private final JwtAuthFilter jwtAuthFilter;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
@@ -20,15 +21,39 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Profile({"local", "test"})
+    public SecurityFilterChain localSecurityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable());
         http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        http.httpBasic(Customizer.withDefaults());
+        http.httpBasic(basic -> basic.disable());
+
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/patents/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/experts/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()
                 .anyRequest().authenticated()
         );
+
+        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    @Profile("!local & !test")
+    public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable());
+        http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        http.httpBasic(basic -> basic.disable());
+        
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**", "/error").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/patents/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/experts/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/organizations/**").permitAll()
+                .anyRequest().authenticated()
+        );
+        
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

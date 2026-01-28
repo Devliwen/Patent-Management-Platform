@@ -2,12 +2,17 @@ package org.ihebut.patent.patent.controller;
 
 import org.ihebut.patent.patent.dto.ApiResponse;
 import org.ihebut.patent.patent.dto.ValuationCreateRequest;
+import org.ihebut.patent.patent.dto.ValuationParamUpdateRequest;
 import org.ihebut.patent.patent.entity.PatentBase;
+import org.ihebut.patent.patent.entity.PatentValuationModelParam;
 import org.ihebut.patent.patent.entity.PatentValuationReport;
 import org.ihebut.patent.patent.entity.UserPatent;
+import org.ihebut.patent.patent.mapper.PatentValuationModelParamMapper;
 import org.ihebut.patent.patent.mapper.PatentValuationReportMapper;
 import org.ihebut.patent.patent.mapper.UserPatentMapper;
+import org.ihebut.patent.patent.security.CurrentUser;
 import org.ihebut.patent.patent.service.PatentTableService;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,19 +23,29 @@ import java.util.List;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @RestController
-@RequestMapping("/api/valuations")
+@RequestMapping("/api")
 public class ValuationController {
     private final PatentValuationReportMapper reportMapper;
     private final PatentTableService patentTableService;
     private final UserPatentMapper userPatentMapper;
+    private final PatentValuationModelParamMapper paramMapper;
+    private final CurrentUser currentUser;
 
-    public ValuationController(PatentValuationReportMapper reportMapper, PatentTableService patentTableService, UserPatentMapper userPatentMapper) {
+    public ValuationController(
+            PatentValuationReportMapper reportMapper,
+            PatentTableService patentTableService,
+            UserPatentMapper userPatentMapper,
+            PatentValuationModelParamMapper paramMapper,
+            CurrentUser currentUser
+    ) {
         this.reportMapper = reportMapper;
         this.patentTableService = patentTableService;
         this.userPatentMapper = userPatentMapper;
+        this.paramMapper = paramMapper;
+        this.currentUser = currentUser;
     }
 
-    @PostMapping
+    @PostMapping("/valuations")
     public ApiResponse<PatentValuationReport> create(@RequestBody ValuationCreateRequest request) {
         if (request == null || request.getPatentSource() == null || request.getPatentSource().isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "patentSource不能为空");
@@ -85,7 +100,7 @@ public class ValuationController {
         return ApiResponse.ok(reportMapper.save(r));
     }
 
-    @GetMapping
+    @GetMapping("/valuations")
     public ApiResponse<List<PatentValuationReport>> list(
             @RequestParam String patentSource,
             @RequestParam(required = false) String patentCategory,
@@ -111,6 +126,25 @@ public class ValuationController {
         throw new ResponseStatusException(BAD_REQUEST, "patentSource不合法");
     }
 
+    @PutMapping("/valuation-params/{key}")
+    @Transactional
+    public ApiResponse<PatentValuationModelParam> updateParam(@PathVariable String key, @RequestBody ValuationParamUpdateRequest request) {
+        long userId = currentUser.requireUserId();
+        if (key == null || key.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "key不能为空");
+        }
+        PatentValuationModelParam param = paramMapper.findByParamKey(key).orElse(null);
+        if (param == null) {
+            param = new PatentValuationModelParam();
+            param.setParamKey(key);
+        }
+        if (request != null) {
+            if (request.getParamValue() != null) param.setParamValue(request.getParamValue());
+        }
+        param.setUpdatedBy(userId);
+        return ApiResponse.ok(paramMapper.save(param));
+    }
+
     private static String safe(String s) {
         return s == null ? "" : s;
     }
@@ -131,4 +165,3 @@ public class ValuationController {
         return hits;
     }
 }
-
