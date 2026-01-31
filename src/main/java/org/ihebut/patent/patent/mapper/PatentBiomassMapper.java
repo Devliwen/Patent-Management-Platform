@@ -18,5 +18,13 @@ public interface PatentBiomassMapper extends JpaRepository<PatentBiomass, String
     Page<PatentBiomass> findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
             String title, String abstractText, String applicant, String inventor, Pageable pageable
     );
+
+    List<PatentBiomass> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor
+    );
+
+    Page<PatentBiomass> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor, Pageable pageable
+    );
 }
 

@@ -18,5 +18,13 @@ public interface PatentHydrogenMapper extends JpaRepository<PatentHydrogen, Stri
     Page<PatentHydrogen> findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
             String title, String abstractText, String applicant, String inventor, Pageable pageable
     );
+
+    List<PatentHydrogen> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor
+    );
+
+    Page<PatentHydrogen> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor, Pageable pageable
+    );
 }
 
