@@ -39,10 +39,10 @@
                 <el-option label="锂电池" value="lilon" />
               </el-select>
             </el-form-item>
-            <el-form-item label="搜索关键词">
+            <el-form-item label="搜索关键词（专利号/标题/摘要/申请人/发明人）">
               <el-input 
                 v-model="searchForm.query" 
-                placeholder="请输入标题/摘要/申请人/发明人"
+                placeholder="请输入关键词"
                 @keyup.enter="searchPatents"
               />
             </el-form-item>
