@@ -26,7 +26,7 @@
           <div 
             class="ai-chat-container" 
             @click.stop
-            :style="{ width: aiChatWidth + 'px' }"
+            :style="{ width: aiChatWidth + 'px', right: '0' }"
           >
             <!-- 可拖动的分界线 -->
             <div 
@@ -484,12 +484,15 @@ onMounted(async () => {
   try {
     // 检查是否有 token
     const token = localStorage.getItem('token');
-    if (token) {
-      // 尝试获取用户信息以验证 token 有效性
+    if (token && typeof token === 'string') {
+      // 只有token是有效字符串时才尝试获取用户信息
       await loadUserInfo();
       // 如果获取用户信息失败，loadUserInfo 内部会处理错误和状态更新
     } else {
-      // 没有 token，确保登录状态为 false
+      // 没有 token 或 token 无效，确保登录状态为 false
+      if (token !== null) {
+        localStorage.removeItem('token');
+      }
       updateLoginStatus();
     }
   } catch (error: any) {
@@ -499,10 +502,7 @@ onMounted(async () => {
       updateLoginStatus() // 更新登录状态
     }
   } finally {
-    // 模拟加载延迟，实际项目可移除
-    setTimeout(() => {
-      loading.value = false
-    }, 800)
+    loading.value = false
   }
 })
 
@@ -689,9 +689,12 @@ const logout = () => {
 .ai-chat-container {
   height: 100%;
   background: white;
-  position: relative;
+  position: absolute;
   box-shadow: -2px 0 20px rgba(0, 0, 0, 0.1);
   animation: slideInRight 0.3s ease;
+  /* 确保右边界固定在页面最右边界 */
+  right: 0;
+  top: 0;
 }
 
 .resize-handle.left {

@@ -42,6 +42,78 @@ export type AxiosCancelToken = {
 // 通用响应类型复用
 export type BaseApiResponse<T = any> = ApiResponse<T>
 
+// AI聊天相关类型
+export interface AiChatRequest {
+  question: string                    // 问题
+  sessionId?: number                 // 会话ID（可选，用于继续对话）
+}
+
+export interface AiChatResponse {
+  answer: string                     // AI回答
+  model: string                      // 使用的模型
+  requestId: string                  // 请求ID
+  sessionId: number                  // 会话ID
+  messageId: number                  // 消息ID
+}
+
+// 聊天会话类型（对应后端ChatSession实体）
+export interface ChatSession {
+  id: number                         // 会话ID
+  title: string                      // 会话标题
+  createdAt: string                  // 创建时间（ISO格式）
+  updatedAt: string                  // 更新时间（ISO格式）
+}
+
+// 聊天消息类型（对应后端ChatMessage实体）
+export interface ChatMessage {
+  id: number                         // 消息ID
+  sessionId: number                  // 会话ID
+  userId: number                     // 用户ID
+  role: 'user' | 'assistant' | 'system' // 消息角色
+  content: string                     // 消息内容
+  createdAt: string                  // 创建时间（ISO格式）
+}
+
+// 后端返回的聊天消息响应类型（对应后端ChatMessageResponse）
+export interface ChatMessageResponse {
+  id: number                         // 消息ID
+  role: 'user' | 'assistant' | 'system' // 角色
+  content: string                     // 消息内容
+  createdAt: string                  // 创建时间（ISO格式）
+}
+
+// 前端使用的简化消息类型（用于界面显示）
+export interface UIMessage {
+  id: string                         // 前端生成的临时ID
+  role: 'user' | 'assistant' | 'system' // 消息角色
+  content: string                    // 消息内容
+  timestamp: number                  // 时间戳
+  backendId?: number                 // 后端消息ID（保存后更新）
+}
+
+// 前端使用的简化会话类型（用于界面显示）
+export interface UISession {
+  id: string                         // 前端生成的临时ID
+  title: string                      // 会话标题
+  messages: UIMessage[]              // 消息列表
+  createdAt: number                 // 创建时间戳
+  updatedAt: number                  // 更新时间戳
+  backendId?: number                 // 后端会话ID（保存后更新）
+}
+
+// 创建会话请求类型（对应后端ChatCreateSessionRequest）
+export interface ChatCreateSessionRequest {
+  title?: string                     // 会话标题（可选）
+}
+
+// 创建会话响应类型（对应后端ChatSessionResponse）
+export interface ChatSessionResponse {
+  id: number                         // 会话ID
+  title: string                      // 会话标题
+  createdAt: string                  // 创建时间（ISO格式）
+  updatedAt: string                  // 更新时间（ISO格式）
+}
+
 // 专利基础信息类型
 export interface PatentBase {
   publicNum: string           // 公开号（主键）

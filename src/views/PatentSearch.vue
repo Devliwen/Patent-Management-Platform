@@ -58,15 +58,18 @@
           <el-table 
             :data="patentList" 
             v-loading="loading"
-            style="width: 100%"
+            style="width: 100%; table-layout: auto"  <!-- 关键修改：table-layout改为auto，支持自适应 -->
           >
-            <el-table-column prop="publicNum" label="公开号" width="150" />
-            <el-table-column prop="title" label="标题" show-overflow-tooltip />
+            <!-- 公开号：移除固定width，增加min-width保证最小宽度 -->
+            <el-table-column prop="publicNum" label="公开号" min-width="150" />
+            <!-- 标题：移除固定width，增加min-width保证最小宽度 -->
+            <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+            <!-- 其他列微调宽度，保证整体适配 -->
             <el-table-column prop="applicant" label="申请人" width="150" show-overflow-tooltip />
-            <el-table-column prop="inventor" label="发明人" width="120" show-overflow-tooltip />
-            <el-table-column prop="ipc" label="IPC" width="120" show-overflow-tooltip />
-            <el-table-column prop="appliDate" label="申请日期" width="120" />
-            <el-table-column label="操作" width="100">
+            <el-table-column prop="inventor" label="发明人" width="150" show-overflow-tooltip />
+            <el-table-column prop="ipc" label="IPC" width="100" show-overflow-tooltip />
+            <el-table-column prop="appliDate" label="申请日期" width="100" />
+            <el-table-column label="操作" width="80" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" @click="viewPatent(row)">查看</el-button>
               </template>
@@ -86,17 +89,13 @@
         </div>
       </div>
 
-      <!-- AI咨询区域 -->
+      <!-- AI咨询区域 - 核心修改：右侧边界固定在页面最右侧 -->
       <div 
         v-if="showAIChat" 
         class="ai-chat-section"
-        :style="{ width: aiChatWidth + 'px' }"
+        :style="{ width: aiChatWidth + 'px', right: '0' }"
+        @mousedown="(e) => startResize(e, 'border')"
       >
-        <!-- 可拖动的分界线 -->
-        <div 
-          class="resize-handle left"
-          @mousedown="startResize"
-        ></div>
         <AIChat />
       </div>
     </div>
@@ -140,7 +139,6 @@ import type { PatentBase, PatentCategory, PatentQueryParams } from '@/types'
 
 // AI聊天功能相关
 const showAIChat = ref(false)
-const patentSectionWidth = ref(600) // 默认专利区域宽度
 const aiChatWidth = ref(400) // AI咨询区域宽度
 const isResizing = ref(false)
 
@@ -165,14 +163,15 @@ const currentPatent = ref<PatentBase>({} as PatentBase)
 // 切换AI聊天显示/隐藏
 const toggleAIChat = () => {
   showAIChat.value = !showAIChat.value
-  if (showAIChat.value) {
-    // 显示AI聊天时，设置默认宽度
-    aiChatWidth.value = 400
-  }
 }
 
-// 开始调整大小
-const startResize = (e: MouseEvent) => {
+// 开始调整大小 - 核心修改：判断点击位置是否在左侧边框区域
+const startResize = (e: MouseEvent, type: string) => {
+  // 只在AI面板左侧8px范围内触发拖动
+  if (e.clientX - (e.target as HTMLElement).getBoundingClientRect().left > 8) {
+    return
+  }
+  
   isResizing.value = true
   document.body.classList.add('resizing')
   document.addEventListener('mousemove', handleResize)
@@ -184,18 +183,18 @@ const startResize = (e: MouseEvent) => {
 const handleResize = (e: MouseEvent) => {
   if (!isResizing.value) return
   
-  const containerWidth = document.querySelector('.main-content')?.clientWidth || 1200
-  const minAIChatWidth = 300 // AI咨询区域最小宽度
-  const maxAIChatWidth = 800 // AI咨询区域最大宽度
+  const containerWidth = window.innerWidth
+  const minWidth = 200 // 最小宽度
+  const maxWidth = 1200 // 最大宽度
   
-  // 计算新的AI咨询区域宽度（从右侧边界到鼠标位置的距离）
-  let newAIChatWidth = containerWidth - e.clientX
+  // 计算新的AI咨询面板宽度（从右侧边界到鼠标位置的距离）
+  let newWidth = containerWidth - e.clientX
   
   // 限制宽度范围
-  if (newAIChatWidth < minAIChatWidth) newAIChatWidth = minAIChatWidth
-  if (newAIChatWidth > maxAIChatWidth) newAIChatWidth = maxAIChatWidth
+  if (newWidth < minWidth) newWidth = minWidth
+  if (newWidth > maxWidth) newWidth = maxWidth
   
-  aiChatWidth.value = newAIChatWidth
+  aiChatWidth.value = newWidth
 }
 
 // 停止调整大小
@@ -205,8 +204,6 @@ const stopResize = () => {
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
 }
-
-
 
 // 搜索专利
 const searchPatents = async () => {
@@ -337,27 +334,7 @@ onMounted(() => {
   background: white;
   transition: width 0.3s ease;
   position: relative;
-  overflow: auto;
-}
-
-.resize-handle {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  background: #e4e7ed;
-  cursor: col-resize;
-  z-index: 10;
-  transition: background 0.3s;
-}
-
-.resize-handle:hover {
-  background: #409eff;
-}
-
-.resize-handle:active {
-  background: #337ecc;
+  overflow: hidden;
 }
 
 .search-section {
@@ -369,13 +346,60 @@ onMounted(() => {
   padding: 20px;
   height: calc(100% - 120px);
   overflow: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
+/* 优化表格自适应样式 */
+.patent-list .el-table {
+  width: 100% !important;
+  /* 移除固定最小宽度，让表格完全自适应 */
+}
+
+.patent-list .el-table__header-wrapper,
+.patent-list .el-table__body-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* AI咨询区域样式 - 核心修改：右侧边界固定在页面最右侧 */
 .ai-chat-section {
   height: 100%;
   background: white;
-  border-left: 1px solid #e4e7ed;
+  /* 左侧边框作为拖动线 */
+  border-left: 8px solid #e4e7ed;
   overflow: hidden;
+  transition: border-color 0.3s;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+/* 只在边框区域显示拖动光标 */
+.ai-chat-section::before {
+  content: '';
+  position: absolute;
+  left: -8px; /* 覆盖边框区域 */
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 1;
+}
+
+/* 悬停和拖动状态的边框样式 */
+.ai-chat-section:hover {
+  border-left-color: #409eff;
+}
+
+:global(.resizing) .ai-chat-section {
+  border-left-color: #337ecc !important;
+}
+
+/* 确保AI聊天内容区域鼠标样式正常 */
+.ai-chat-section >>> .ai-chat-container,
+.ai-chat-section >>> .chat-content {
+  cursor: default;
 }
 
 .abstract-content, .details-content {

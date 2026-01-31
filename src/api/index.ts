@@ -6,7 +6,7 @@ import axios, {
 } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '../router'
-import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserProfile, ValuationReport } from '../types'
+import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserProfile, ValuationReport, AiChatRequest, AiChatResponse, ChatSession, ChatMessage, ChatCreateSessionRequest, ChatSessionResponse, ChatMessageResponse } from '../types'
 
 // 取消请求token缓存
 const cancelTokenMap = new Map<string, CancelTokenSource>()
@@ -16,6 +16,73 @@ const requestCache = new Map<string, any>()
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 // 响应数据类型已从 ../types 导入
+
+// 免token接口白名单
+const NO_TOKEN_WHITELIST = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/captcha'
+]
+
+// 检查token是否即将过期（在过期前5分钟提醒）
+const isTokenExpiringSoon = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = payload.exp * 1000 // 转换为毫秒
+    const now = Date.now()
+    const fiveMinutes = 5 * 60 * 1000
+    return (exp - now) < fiveMinutes
+  } catch (error) {
+    console.warn('无法解析token过期时间:', error)
+    return false
+  }
+}
+
+// 检查token是否已过期
+const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = payload.exp * 1000 // 转换为毫秒
+    return Date.now() > exp
+  } catch (error) {
+    console.warn('无法解析token过期时间:', error)
+    return true
+  }
+}
+
+// token状态缓存，避免频繁提示
+let lastTokenState = {
+  token: '',
+  isExpiringSoon: false,
+  isExpired: false,
+  lastChecked: 0
+}
+
+// 检查token状态，只在状态变化时提示
+const checkTokenState = (token: string): { isExpiringSoon: boolean; isExpired: boolean } => {
+  const now = Date.now()
+  const isExpiringSoon = isTokenExpiringSoon(token)
+  const isExpired = isTokenExpired(token)
+  
+  // 如果token相同且5秒内检查过，直接返回缓存状态
+  if (lastTokenState.token === token && 
+      now - lastTokenState.lastChecked < 5000) {
+    return {
+      isExpiringSoon: lastTokenState.isExpiringSoon,
+      isExpired: lastTokenState.isExpired
+    }
+  }
+  
+  // 更新缓存
+  lastTokenState = {
+    token,
+    isExpiringSoon,
+    isExpired,
+    lastChecked: now
+  }
+  
+  return { isExpiringSoon, isExpired }
+}
 
 class ApiService {
   private axiosInstance: AxiosInstance
@@ -34,7 +101,7 @@ class ApiService {
       (config) => {
         const typedConfig = config as RequestConfig
         // 取消重复请求
-        const requestKey = this.getRequestKey(typedConfig)
+        const requestKey = ApiService.getRequestKey(typedConfig)
         if (cancelTokenMap.has(requestKey)) {
           cancelTokenMap.get(requestKey)?.cancel('重复请求已取消')
           cancelTokenMap.delete(requestKey)
@@ -44,33 +111,72 @@ class ApiService {
         typedConfig.cancelToken = source.token
         cancelTokenMap.set(requestKey, source)
 
-        // 添加token
+        // 检查是否为免token接口
+        const isNoTokenApi = NO_TOKEN_WHITELIST.some(api => config.url?.includes(api))
+        
+        // 如果是免token接口，直接返回配置，不进行任何token相关处理
+        if (isNoTokenApi) {
+          return config
+        }
+        
+        // 为AI聊天接口设置更长的超时时间（60秒）
+        if (config.url?.includes('/ai/chat')) {
+          // 创建新的配置对象，避免被全局配置覆盖
+          const newConfig = { ...config }
+          newConfig.timeout = 60000 // 60秒
+          console.log('AI聊天接口超时设置:', { 
+            url: config.url, 
+            timeout: newConfig.timeout,
+            originalTimeout: config.timeout 
+          })
+          return newConfig
+        }
+        
+        // 添加token（非免token接口才需要）
         if (!typedConfig.headers) {
           typedConfig.headers = {}
         }
         
         const token = localStorage.getItem('token')
+        
         // 关键：只在token是字符串时才设置请求头
         if (token && typeof token === 'string') {
-          typedConfig.headers.Authorization = `Bearer ${token}`
-          
-          // 调试信息：打印请求头和token信息
-          console.log('请求拦截器 - 添加Authorization头:', {
-            url: config.url,
-            method: config.method,
-            authorizationHeader: `Bearer ${token}`,
-            tokenLength: token.length,
-            tokenPrefix: token.substring(0, 20) + '...',
-            isJWT: token.split('.').length === 3
-          })
-        } else {
-          // token无效时，清除并提示
-          localStorage.removeItem('token')
-          console.warn('token无效，已清除:', {
-            tokenType: typeof token,
-            tokenValue: token
-          })
-        }
+            // 检查token状态（使用缓存机制避免频繁提示）
+            const tokenState = checkTokenState(token)
+            
+            if (tokenState.isExpired) {
+              // token已过期，清除token并提示重新登录
+              localStorage.removeItem('token')
+              if (router.currentRoute.value.path !== '/login') {
+                ElMessage.warning('登录已过期，请重新登录')
+                router.push('/login')
+              }
+              return Promise.reject(new Error('Token已过期'))
+            } else if (tokenState.isExpiringSoon && 
+                      (lastTokenState.token !== token || !lastTokenState.isExpiringSoon)) {
+              // token即将过期，且状态发生变化时才提示
+              ElMessage.info('登录状态即将过期，建议保存当前工作后重新登录')
+            }
+            
+            typedConfig.headers.Authorization = `Bearer ${token}`
+            
+            // 调试信息：打印请求头和token信息
+            console.log('请求拦截器 - 添加Authorization头:', {
+              url: config.url,
+              method: config.method,
+              authorizationHeader: `Bearer ${token}`,
+              tokenLength: token.length,
+              tokenPrefix: token.substring(0, 20) + '...',
+              isJWT: token.split('.').length === 3
+            })
+          } else {
+            // token无效时，清除并提示
+            localStorage.removeItem('token')
+            console.warn('token无效，已清除:', {
+              tokenType: typeof token,
+              tokenValue: token
+            })
+          }
         return config
       },
       (error) => {
@@ -82,7 +188,7 @@ class ApiService {
     this.axiosInstance.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
         // 移除取消token
-        const requestKey = this.getRequestKey(response.config as RequestConfig)
+        const requestKey = ApiService.getRequestKey(response.config as RequestConfig)
         cancelTokenMap.delete(requestKey)
 
         const res = response.data
@@ -90,18 +196,21 @@ class ApiService {
         if (res.code !== 0) {
           // 业务逻辑层面的401错误（后端返回的code为401）
           if (res.code === 401) {
-            ElMessageBox.confirm(
-              '登录状态已失效，请重新登录',
-              '提示',
-              {
-                confirmButtonText: '重新登录',
-                cancelButtonText: '取消',
-                type: 'warning'
-              }
-            ).then(() => {
-              localStorage.removeItem('token')
-              router.push('/login')
-            })
+            // 只在用户当前页面需要登录时才提示
+            if (router.currentRoute.value.path !== '/login') {
+              ElMessageBox.confirm(
+                '登录状态已失效，请重新登录',
+                '提示',
+                {
+                  confirmButtonText: '重新登录',
+                  cancelButtonText: '取消',
+                  type: 'warning'
+                }
+              ).then(() => {
+                localStorage.removeItem('token')
+                router.push('/login')
+              })
+            }
             return Promise.reject(new Error('登录状态失效'))
           }
           // 业务逻辑层面的403错误
@@ -120,7 +229,7 @@ class ApiService {
       },
       async (error) => {
         // 移除取消token
-        const requestKey = this.getRequestKey(error.config as RequestConfig)
+        const requestKey = ApiService.getRequestKey(error.config as RequestConfig)
         cancelTokenMap.delete(requestKey)
 
         // 处理取消请求
@@ -129,31 +238,31 @@ class ApiService {
           return Promise.reject(error)
         }
 
-        // 网络错误重试
-        const config = error.config as RequestConfig
-        config.retryCount = config.retryCount || 0
-        const maxRetry = 3
-        if (config.retryCount < maxRetry && !config.noRetry) {
-          config.retryCount++
-          const delay = this.getRetryDelay(config.retryCount)
-          await this.sleep(delay)
-          return this.axiosInstance(config)
-        }
-
         // HTTP状态码错误处理
-        if (error.response?.status === 403) {
-          ElMessage.error('无权限访问，请确认登录状态')
-          localStorage.removeItem('token')
-          router.push('/login')
+        if (error.response?.status === 500) {
+          // 500错误：服务器内部错误，直接拒绝，不重试
+          console.error('服务器内部错误 (500):', error)
+          ElMessage.error('服务器内部错误，请稍后重试')
+          return Promise.reject(error)
+        } else if (error.response?.status === 403) {
+          // 403错误：无权限访问
+          if (router.currentRoute.value.path !== '/login') {
+            ElMessage.error('无权限访问，请确认登录状态')
+            localStorage.removeItem('token')
+            router.push('/login')
+          }
           return Promise.reject(error)
         } else if (error.response?.status === 401) {
-          ElMessage.error('登录已过期，请重新登录')
-          localStorage.removeItem('token')
-          router.push('/login')
+          // 401错误：登录已过期
+          if (router.currentRoute.value.path !== '/login') {
+            ElMessage.error('登录已过期，请重新登录')
+            localStorage.removeItem('token')
+            router.push('/login')
+          }
           return Promise.reject(error)
         }
 
-        // 通用网络错误提示
+        // 通用网络错误提示（其他错误也不重试）
         console.error('网络错误:', error)
         ElMessage.error('网络异常，请检查网络连接')
         return Promise.reject(error)
@@ -161,20 +270,15 @@ class ApiService {
     )
   }
 
-  // 生成请求唯一标识
-  private getRequestKey(config: RequestConfig): string {
+  // 生成请求唯一标识（静态方法，可在拦截器中使用）
+  private static getRequestKey(config: RequestConfig): string {
+    // 安全处理：检查config是否为undefined或null
+    if (!config) {
+      return 'unknown-request'
+    }
+    
     const { method, url, params, data } = config
     return [method, url, JSON.stringify(params), JSON.stringify(data)].join('-')
-  }
-
-  // 重试延迟（指数退避）
-  private getRetryDelay(retryCount: number): number {
-    return Math.pow(2, retryCount) * 100 // 100ms, 200ms, 400ms...
-  }
-
-  // 休眠函数
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   // 清除请求缓存
@@ -184,7 +288,7 @@ class ApiService {
 
   // GET请求
   get<T = any>(url: string, params?: any, config?: RequestConfig): Promise<T> {
-    const requestKey = this.getRequestKey({ method: 'get', url, params })
+    const requestKey = ApiService.getRequestKey({ method: 'get', url, params })
     // 优先读取缓存
     if (requestCache.has(requestKey) && !(config?.noCache)) {
       return Promise.resolve(requestCache.get(requestKey))
@@ -585,5 +689,43 @@ export const profileApi = {
   // 更新用户资料
   updateUserProfile: (profileData: UpdateUserProfileParams) => {
     return api.updateUserProfile(profileData)
+  }
+}
+
+// AI聊天相关方法
+export const aiApi = {
+  // AI聊天咨询
+  chat: (requestData: AiChatRequest) => {
+    return api.post<AiChatResponse>('/ai/chat', requestData)
+  },
+  
+  // 获取用户的所有聊天会话（支持分页）
+  getSessions: (page: number = 1, size: number = 10) => {
+    return api.get<{success: boolean, data: ChatSession[]}>('/chat/sessions', {
+      params: { page, size }
+    })
+  },
+  
+  // 创建新的聊天会话
+  createSession: (title?: string) => {
+    const requestData: ChatCreateSessionRequest = {
+      title: title || '新对话'
+    }
+    return api.post<ChatSessionResponse>('/chat/sessions', requestData)
+  },
+  
+  // 删除聊天会话
+  deleteSession: (sessionId: number) => {
+    return api.delete(`/chat/sessions/${sessionId}`)
+  },
+  
+  // 更新会话标题
+  updateSessionTitle: (sessionId: number, title: string) => {
+    return api.put<ApiResponse<ChatSessionResponse>>(`/chat/sessions/${sessionId}/title`, { title })
+  },
+  
+  // 获取会话的所有消息
+  getMessages: (sessionId: number) => {
+    return api.get<ChatMessageResponse[]>(`/chat/sessions/${sessionId}/messages`)
   }
 }
