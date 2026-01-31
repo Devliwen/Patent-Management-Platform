@@ -28,12 +28,6 @@
             @click.stop
             :style="{ width: aiChatWidth + 'px', right: '0' }"
           >
-            <!-- 可拖动的分界线 -->
-            <div 
-              class="resize-handle left"
-              @mousedown="startResize"
-            ></div>
-            
             <!-- AI聊天组件 -->
             <AIChat />
             
@@ -462,6 +456,7 @@ const handleResize = (e: MouseEvent) => {
   const minWidth = 200 // 最小宽度
   const maxWidth = 1200 // 最大宽度
   
+  // 直接使用鼠标的X坐标作为左边界位置
   let newWidth = containerWidth - e.clientX
   
   // 限制宽度范围

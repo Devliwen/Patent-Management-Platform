@@ -1,7 +1,13 @@
 <template>
   <div class="ai-chat-container">
+    <!-- 可拖动的分界线 -->
+    <div 
+      class="resize-handle left"
+      @mousedown="startResize"
+    ></div>
+    
     <!-- 对话记录侧边栏 -->
-    <div class="chat-sidebar" :style="{ width: sidebarWidth + 'px' }">
+    <div class="chat-sidebar" :style="{ width: fixedSidebarWidth + 'px' }">
       <div class="sidebar-header">
         <h3>对话记录</h3>
         <el-button type="primary" size="small" @click="createNewChat">
@@ -52,7 +58,7 @@
     </div>
 
     <!-- 聊天主区域 -->
-    <div class="chat-main">
+    <div class="chat-main" :style="{ width: chatWidth + 'px' }">
       <!-- 未登录提示 -->
       <div v-if="!currentUserId" class="login-prompt">
         <div class="prompt-content">
@@ -213,6 +219,15 @@ const createSessionDialogVisible = ref(false)
 const newSessionTitle = ref('')
 const messageListRef = ref<HTMLElement>()
 
+// 拖动相关数据
+const isResizing = ref(false)
+const fixedSidebarWidth = 280 // 固定侧边栏宽度
+const minChatWidth = 400 // 最小聊天框宽度
+const maxChatWidth = 1200 // 最大聊天框宽度
+const startX = ref(0) // 拖动开始时的鼠标X坐标
+const startChatWidth = ref(0) // 拖动开始时的聊天框宽度
+const chatWidth = ref(0) // 聊天框动态宽度
+
 // 分页相关数据
 const pageSize = ref(10) // 每页加载数量
 const currentPage = ref(1) // 当前页码
@@ -234,6 +249,9 @@ const currentUserId = ref<number | null>(null)
 
 // 初始化组件
 const initComponent = async () => {
+  // 初始化聊天框宽度为最小值
+  chatWidth.value = minChatWidth
+  
   // 检查是否已登录（检查token是否存在）
   const token = localStorage.getItem('token')
   console.log('AI咨询模块初始化 - token检查:', { 
@@ -404,6 +422,52 @@ const loadMoreSessions = () => {
   if (hasMore.value && !loadingMore.value) {
     loadUserSessions(true)
   }
+}
+
+// 开始调整大小
+const startResize = (e: MouseEvent) => {
+  isResizing.value = true
+  startX.value = e.clientX
+  // 使用当前的聊天框宽度作为初始值
+  startChatWidth.value = chatWidth.value
+  document.body.classList.add('resizing')
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  e.preventDefault()
+}
+
+// 处理调整大小
+const handleResize = (e: MouseEvent) => {
+  if (!isResizing.value) return
+  
+  // 计算鼠标移动的增量
+  const deltaX = e.clientX - startX.value
+  
+  // 计算新的聊天框宽度：初始聊天框宽度 - 移动增量
+  let newChatWidth = startChatWidth.value - deltaX
+  
+  // 限制聊天框宽度范围
+  newChatWidth = Math.max(minChatWidth, Math.min(maxChatWidth, newChatWidth))
+  
+  // 更新聊天框宽度
+  chatWidth.value = newChatWidth
+  
+  // 添加调试信息
+  console.log('拖动中:', {
+    startX: startX.value,
+    clientX: e.clientX,
+    deltaX: deltaX,
+    startChatWidth: startChatWidth.value,
+    newChatWidth: newChatWidth
+  })
+}
+
+// 停止调整大小
+const stopResize = () => {
+  isResizing.value = false
+  document.body.classList.remove('resizing')
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
 }
 
 // 切换侧边栏显示/隐藏
@@ -817,6 +881,27 @@ const styles = `
   display: flex;
   height: 100vh;
   background: #f5f7fa;
+  position: relative;
+}
+
+.resize-handle.left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: #e4e7ed;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.3s;
+}
+
+.resize-handle.left:hover {
+  background: #409eff;
+}
+
+.resize-handle.left:active {
+  background: #337ecc;
 }
 
 .chat-sidebar {
@@ -947,12 +1032,10 @@ const styles = `
 }
 
 .chat-main {
-  flex: 1;
   display: flex;
   flex-direction: column;
   background: white;
-  /* 确保聊天框宽度正确响应容器宽度变化 */
-  width: 100%;
+  /* 聊天框宽度由chatWidth变量控制 */
   min-width: 0; /* 防止flex项目溢出 */
 }
 
