@@ -8,5 +8,6 @@ import java.util.List;
 public interface ChatMessageMapper extends JpaRepository<ChatMessage, Long> {
     List<ChatMessage> findBySessionIdOrderByCreatedAtAsc(Long sessionId);
     List<ChatMessage> findTop50BySessionIdOrderByCreatedAtDesc(Long sessionId);
+    void deleteBySessionId(Long sessionId);
 }
 
