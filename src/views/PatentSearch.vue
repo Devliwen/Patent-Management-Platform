@@ -408,14 +408,6 @@ onMounted(() => {
 }
 
 /* 全局样式，用于拖动时的光标 */
-:global(.resizing) {
-  cursor: col-resize !important;
-  user-select: none !important;
-}
-</style>
-
-<style>
-/* 全局样式，用于拖动时的光标 */
 .resizing {
   cursor: col-resize !important;
   user-select: none !important;

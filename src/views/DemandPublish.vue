@@ -9,9 +9,9 @@
         </template>
         
         <el-form 
-          :model="demandForm" 
-          :rules="demandRules" 
-          ref="demandFormRef" 
+          :model="demandForm"
+          :rules="demandRules"
+          ref="demandFormRef"
           label-width="120px"
           class="demand-form"
         >
@@ -20,12 +20,14 @@
               <el-form-item label="需求标题" prop="title">
                 <el-input 
                   v-model="demandForm.title" 
-                  placeholder="请输入需求标题" 
+                  placeholder="请输入需求标题"
                   maxlength="100"
                   show-word-limit
                 />
               </el-form-item>
             </el-col>
+          </el-row>
+          <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="技术方向" prop="techDirection">
                 <el-select 
@@ -59,7 +61,7 @@
             <el-input 
               v-model="demandForm.keywords" 
               type="textarea" 
-              :rows="2" 
+              :rows="3" 
               placeholder="请输入关键词，多个关键词用逗号分隔，用于智能匹配专家和专利"
             />
           </el-form-item>
@@ -68,7 +70,7 @@
             <editor-content 
               :editor="editor" 
               class="editor-content border rounded p-3" 
-              style="min-height: 200px; border: 1px solid #dcdfe6;" 
+              style="min-height: 200px; width: 100%; border: 1px solid #dcdfe6;" 
             />
           </el-form-item>
           

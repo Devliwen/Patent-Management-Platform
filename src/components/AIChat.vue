@@ -85,6 +85,7 @@
         </div>
         
         <!-- 侧边栏切换按钮 -->
+        <!--
         <el-button 
           type="link" 
           size="small" 
@@ -93,6 +94,7 @@
         >
           <el-icon><Menu /></el-icon>
         </el-button>
+        -->
       </div>
 
       <!-- 消息列表 -->
@@ -314,10 +316,18 @@ const validateTokenAndGetUserInfo = async () => {
     console.error('获取用户信息失败:', error)
     
     // 处理认证失败的情况
-    if (error.response?.status === 401) {
-      console.log('token可能已过期，但由API拦截器统一处理')
-      // 不立即删除token，让API拦截器统一处理token过期问题
-      // 这样可以避免不同页面间的token状态不一致
+    if (error.response?.status === 401 || error.response?.data?.code === 401) {
+      console.log('Token已过期或无效，准备跳转到登录页面')
+      // 清除本地存储的无效token
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      
+      // 显示提示并跳转到登录页
+      ElMessage.error('登录已过期，请重新登录')
+      setTimeout(() => {
+        router.push('/login')
+      }, 1000)
+      
       currentUserId.value = null
     } else {
       // 网络错误或其他错误，保持当前状态，不显示错误提示

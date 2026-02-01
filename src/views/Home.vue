@@ -453,7 +453,7 @@ const handleResize = (e: MouseEvent) => {
   if (!isResizing.value) return
   
   const containerWidth = window.innerWidth
-  const minWidth = 200 // 最小宽度
+  const minWidth = 100 // 最小宽度
   const maxWidth = 1200 // 最大宽度
   
   // 直接使用鼠标的X坐标作为左边界位置
