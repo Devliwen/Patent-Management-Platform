@@ -1142,6 +1142,118 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "14 专利ES搜索（Elasticsearch）",
+			"item": [
+				{
+					"name": "14.01 重建ES索引（全部，需登录）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+						],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/patents/es/reindex",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "patents", "es", "reindex" ]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14.00 ES状态（索引/文档数）",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/patents/es/status",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "patents", "es", "status" ]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14.02 重建ES索引（单类 wind，需登录）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+						],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/patents/es/reindex?category=wind",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "patents", "es", "reindex" ],
+							"query": [ { "key": "category", "value": "wind" } ]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14.02b 索引单条专利（需登录）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+						],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/patents/es/index-one?category=wind&publicNum=CN123456789A",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "patents", "es", "index-one" ],
+							"query": [
+								{ "key": "category", "value": "wind" },
+								{ "key": "publicNum", "value": "CN123456789A" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14.03 ES检索（关键词，多字段）",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/patents/es/search?query=人工智能&category=wind&page=0&size=10",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "patents", "es", "search" ],
+							"query": [
+								{ "key": "query", "value": "人工智能" },
+								{ "key": "category", "value": "wind" },
+								{ "key": "page", "value": "0" },
+								{ "key": "size", "value": "10" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14.04 ES检索（关键语句，phrase=true）",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/patents/es/search?query=一种用于专利匹配的方法&phrase=true&page=0&size=10",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "patents", "es", "search" ],
+							"query": [
+								{ "key": "query", "value": "一种用于专利匹配的方法" },
+								{ "key": "phrase", "value": "true" },
+								{ "key": "page", "value": "0" },
+								{ "key": "size", "value": "10" }
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

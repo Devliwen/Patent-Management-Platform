@@ -77,46 +77,4 @@ public class ChatController {
             return ApiResponse.fail(e.getMessage() == null ? "请求失败" : e.getMessage());
         }
     }
-
-    @DeleteMapping("/sessions/{sessionId}")
-    public ApiResponse<Void> deleteSession(@PathVariable("sessionId") Long sessionId) {
-        long userId = currentUser.requireUserId();
-        if (sessionId == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "sessionId不能为空");
-        }
-        
-        // 验证会话是否存在且属于当前用户
-        ChatSession session = chatSessionMapper.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "会话不存在"));
-        
-        // 删除关联的消息
-        chatMessageMapper.deleteBySessionId(sessionId);
-        
-        // 删除会话
-        chatSessionMapper.delete(session);
-        
-        return ApiResponse.ok();
-    }
-
-    @PutMapping("/sessions/{sessionId}/title")
-    public ApiResponse<ChatSessionResponse> renameSession(@PathVariable("sessionId") Long sessionId, @RequestBody ChatSessionRenameRequest request) {
-        long userId = currentUser.requireUserId();
-        if (sessionId == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "sessionId不能为空");
-        }
-        if (request == null || request.getTitle() == null || request.getTitle().isBlank()) {
-            throw new ResponseStatusException(BAD_REQUEST, "title不能为空");
-        }
-        
-        // 验证会话是否存在且属于当前用户
-        ChatSession session = chatSessionMapper.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "会话不存在"));
-        
-        // 更新会话标题
-        session.setTitle(request.getTitle().trim());
-        session.setUpdatedAt(java.time.LocalDateTime.now());
-        session = chatSessionMapper.save(session);
-        
-        return ApiResponse.ok(new ChatSessionResponse(session.getId(), session.getTitle(), session.getCreatedAt(), session.getUpdatedAt()));
-    }
 }

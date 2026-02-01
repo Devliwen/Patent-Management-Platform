@@ -2,8 +2,11 @@ org\ihebut\patent\patent\mapper\PermissionMapper.class
 org\ihebut\patent\patent\entity\UserAccount.class
 org\ihebut\patent\patent\dto\PatentUpsertRequest.class
 org\ihebut\patent\patent\controller\TransformationController.class
+org\ihebut\patent\patent\dto\PatentEsSearchResponse$Hit.class
 org\ihebut\patent\patent\dto\UserProfileUpdateRequest.class
 org\ihebut\patent\patent\entity\Organization.class
+org\ihebut\patent\patent\search\JsonUtil.class
+org\ihebut\patent\patent\search\PatentEsStartupInitializer.class
 org\ihebut\patent\patent\entity\UserPatent.class
 org\ihebut\patent\patent\mapper\UserPatentMapper.class
 org\ihebut\patent\patent\dto\RegisterRequest.class
@@ -17,6 +20,7 @@ org\ihebut\patent\patent\dto\ChatAskResponse.class
 org\ihebut\patent\patent\dto\ValuationParamUpdateRequest.class
 org\ihebut\patent\patent\entity\DataSyncJob.class
 org\ihebut\patent\patent\entity\Requirement.class
+org\ihebut\patent\patent\search\PatentEsIndexManager.class
 org\ihebut\patent\patent\entity\UserRole.class
 org\ihebut\patent\patent\dto\ApiResponse.class
 org\ihebut\patent\patent\mapper\UserOrganizationMapper.class
@@ -39,6 +43,7 @@ org\ihebut\patent\patent\entity\UserOrganization.class
 org\ihebut\patent\patent\security\JwtAuthFilter.class
 org\ihebut\patent\patent\mapper\OrganizationMapper.class
 org\ihebut\patent\patent\dto\RequirementCreateRequest.class
+org\ihebut\patent\patent\search\SearchBeansConfig.class
 org\ihebut\patent\patent\security\SecurityConfig.class
 org\ihebut\patent\patent\dto\PatentMatchResult.class
 org\ihebut\patent\patent\security\CurrentUser.class
@@ -51,8 +56,10 @@ org\ihebut\patent\patent\dto\AiChatRequest.class
 org\ihebut\patent\patent\service\DashScopeChatService$Message.class
 org\ihebut\patent\patent\dto\ExpertAuditRequest.class
 org\ihebut\patent\patent\controller\RequirementController.class
+org\ihebut\patent\patent\dto\PatentEsSearchResponse.class
 org\ihebut\patent\patent\entity\PatentValuationReport.class
 org\ihebut\patent\patent\mapper\RoleMapper.class
+org\ihebut\patent\patent\controller\PatentEsController.class
 org\ihebut\patent\patent\entity\PatentValuationModelParam.class
 org\ihebut\patent\patent\mapper\PatentHydrogenMapper.class
 org\ihebut\patent\patent\dto\ChatMessageResponse.class
@@ -64,9 +71,11 @@ org\ihebut\patent\patent\entity\PatentWind.class
 org\ihebut\patent\patent\controller\ChatController.class
 org\ihebut\patent\patent\mapper\PatentLilonMapper.class
 org\ihebut\patent\patent\entity\PatentBase.class
+org\ihebut\patent\patent\dto\PatentEsStatusResponse.class
 org\ihebut\patent\patent\mapper\UserProfileMapper.class
 org\ihebut\patent\patent\mapper\RolePermissionMapper.class
 org\ihebut\patent\patent\entity\TransformationResult.class
+org\ihebut\patent\patent\service\PatentEsService.class
 org\ihebut\patent\patent\dto\OrganizationMemberRequest.class
 org\ihebut\patent\patent\dto\RequirementPatentMatchPersistRequest$Item.class
 org\ihebut\patent\patent\security\JwtService.class
@@ -82,6 +91,7 @@ org\ihebut\patent\patent\mapper\UserAccountMapper.class
 org\ihebut\patent\patent\entity\UserNotification.class
 org\ihebut\patent\patent\mapper\AuditLogMapper.class
 org\ihebut\patent\patent\mapper\ExpertProfileMapper.class
+org\ihebut\patent\patent\search\PatentSearchDocument.class
 org\ihebut\patent\patent\controller\AuthController.class
 org\ihebut\patent\patent\controller\ValuationController.class
 org\ihebut\patent\patent\dto\NotificationCreateRequest.class
