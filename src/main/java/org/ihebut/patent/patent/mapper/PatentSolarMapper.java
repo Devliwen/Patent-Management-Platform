@@ -18,5 +18,13 @@ public interface PatentSolarMapper extends JpaRepository<PatentSolar, String> {
     Page<PatentSolar> findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
             String title, String abstractText, String applicant, String inventor, Pageable pageable
     );
+
+    List<PatentSolar> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor
+    );
+
+    Page<PatentSolar> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor, Pageable pageable
+    );
 }
 

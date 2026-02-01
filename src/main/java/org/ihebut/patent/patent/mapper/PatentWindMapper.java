@@ -18,5 +18,13 @@ public interface PatentWindMapper extends JpaRepository<PatentWind, String> {
     Page<PatentWind> findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
             String title, String abstractText, String applicant, String inventor, Pageable pageable
     );
+
+    List<PatentWind> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor
+    );
+
+    Page<PatentWind> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor, Pageable pageable
+    );
 }
 

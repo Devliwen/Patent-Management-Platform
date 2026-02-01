@@ -65,21 +65,34 @@ public class PatentTableService {
         String q = query == null ? "" : query;
         return switch (normalizeCategory(category)) {
             case "wind" -> patentWindMapper
-                    .findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, pageable);
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q, pageable);
             case "solar" -> patentSolarMapper
-                    .findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, pageable);
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q, pageable);
             case "biomass" -> patentBiomassMapper
-                    .findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, pageable);
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q, pageable);
             case "hydrogen" -> patentHydrogenMapper
-                    .findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, pageable);
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q, pageable);
             case "lilon" -> patentLilonMapper
-                    .findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, pageable);
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q, pageable);
             default -> throw invalidCategory(category);
         };
     }
 
     public List<?> search(String category, String query) {
-        return search(category, query, Pageable.unpaged()).getContent();
+        String q = query == null ? "" : query;
+        return switch (normalizeCategory(category)) {
+            case "wind" -> patentWindMapper
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q);
+            case "solar" -> patentSolarMapper
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q);
+            case "biomass" -> patentBiomassMapper
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q);
+            case "hydrogen" -> patentHydrogenMapper
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q);
+            case "lilon" -> patentLilonMapper
+                    .findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(q, q, q, q, q);
+            default -> throw invalidCategory(category);
+        };
     }
 
     public PatentBase get(String category, String publicNum) {

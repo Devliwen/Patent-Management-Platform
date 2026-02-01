@@ -18,5 +18,13 @@ public interface PatentLilonMapper extends JpaRepository<PatentLilon, String> {
     Page<PatentLilon> findByTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
             String title, String abstractText, String applicant, String inventor, Pageable pageable
     );
+
+    List<PatentLilon> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor
+    );
+
+    Page<PatentLilon> findByPublicNumContainingOrTitleContainingOrAbstractTextContainingOrApplicantContainingOrInventorContaining(
+            String publicNum, String title, String abstractText, String applicant, String inventor, Pageable pageable
+    );
 }
 
