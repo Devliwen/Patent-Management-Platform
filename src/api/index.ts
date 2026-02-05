@@ -6,7 +6,7 @@ import axios, {
 } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '../router'
-import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserProfile, ValuationReport, AiChatRequest, AiChatResponse, ChatSession, ChatMessage, ChatCreateSessionRequest, ChatSessionResponse, ChatMessageResponse } from '../types'
+import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, CreateUserPatentParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserPatentParams, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserPatentQueryParams, UserProfile, ValuationReport, AiChatRequest, AiChatResponse, ChatSession, ChatMessage, ChatCreateSessionRequest, ChatSessionResponse, ChatMessageResponse } from '../types'
 
 // 取消请求token缓存
 const cancelTokenMap = new Map<string, CancelTokenSource>()
@@ -348,58 +348,6 @@ class ApiService {
     return this.get<PatentBase>(`/patents/${category}/${publicNum}`)
   }
 
-  // 个人专利管理接口 - 上传个人专利
-  createUserPatent(patentData: {
-    category: string
-    title: string
-    publicNum?: string
-    abstractText?: string
-    ipc?: string
-    cpc?: string
-    applicant?: string
-    inventor?: string
-    visibility?: string
-  }) {
-    return this.post<any>('/api/user-patents', patentData)
-  }
-
-  // 个人专利管理接口 - 获取个人专利列表
-  getUserPatents(params?: {
-    owner?: string
-    category?: string
-    query?: string
-    visibility?: string
-    page?: number
-    size?: number
-  }) {
-    return this.get<any>('/api/user-patents', params)
-  }
-
-  // 个人专利管理接口 - 获取个人专利详情
-  getUserPatentDetail(id: number) {
-    return this.get<any>(`/api/user-patents/${id}`)
-  }
-
-  // 个人专利管理接口 - 修改个人专利
-  updateUserPatent(id: number, patentData: {
-    category?: string
-    title?: string
-    publicNum?: string
-    abstractText?: string
-    ipc?: string
-    cpc?: string
-    applicant?: string
-    inventor?: string
-    visibility?: string
-  }) {
-    return this.put<any>(`/api/user-patents/${id}`, patentData)
-  }
-
-  // 个人专利管理接口 - 删除个人专利
-  deleteUserPatent(id: number) {
-    return this.delete<any>(`/api/user-patents/${id}`)
-  }
-
   // 查询专家
   getExperts(query?: string) {
     const params: { query?: string } = {}
@@ -417,6 +365,21 @@ class ApiService {
   // 创建需求
   createRequirement(requirementData: CreateRequirementParams) {
     return this.post<Requirement>('/requirements', requirementData)
+  }
+
+  // 获取当前用户的需求列表
+  getMyRequirements() {
+    return this.get<Requirement[]>('/requirements/my')
+  }
+
+  // 获取所有用户的需求列表（用于需求广场）
+  getAllRequirements(params?: { page?: number; size?: number; query?: string }) {
+    return this.get<Requirement[]>('/requirements', params)
+  }
+
+  // 删除需求
+  deleteRequirement(requirementId: number) {
+    return this.delete(`/requirements/${requirementId}`)
   }
 
   // 需求匹配专利
@@ -437,6 +400,32 @@ class ApiService {
   // 保存专家匹配结果
   persistExpertMatches(requirementId: number, params: PersistExpertMatchParams) {
     return this.post(`/requirements/${requirementId}/match-experts/persist`, params)
+  }
+
+  // 个人专利管理方法
+  // 获取个人专利列表
+  getUserPatentsList(params?: UserPatentQueryParams) {
+    return this.get<UserPatent[]>('/user-patents', params)
+  }
+
+  // 获取个人专利详情
+  getUserPatentDetail(id: number) {
+    return this.get<UserPatent>(`/user-patents/${id}`)
+  }
+
+  // 创建个人专利
+  createUserPatent(patentData: CreateUserPatentParams) {
+    return this.post<UserPatent>('/user-patents', patentData)
+  }
+
+  // 更新个人专利
+  updateUserPatent(id: number, patentData: UpdateUserPatentParams) {
+    return this.put<UserPatent>(`/user-patents/${id}`, patentData)
+  }
+
+  // 删除个人专利
+  deleteUserPatent(id: number) {
+    return this.delete(`/user-patents/${id}`)
   }
 
   // 查询全部转化成果
@@ -545,65 +534,29 @@ export const patentApi = {
     return api.getPatentByCategoryAndNum(category, publicNum)
   },
 
-  // 获取用户个人专利列表
-  getUserPatents: (params?: { page?: number; size?: number; query?: string }) => {
-    return api.get<Pageable<UserPatent>>('/user/patents', params)
+  // 个人专利管理方法
+  // 获取个人专利列表
+  getUserPatentsList: (params?: UserPatentQueryParams) => {
+    return api.getUserPatentsList(params)
   },
 
-  // 删除用户个人专利
-  deleteUserPatent: (category: string, publicNum: string) => {
-    return api.delete(`/user/patents/${category}/${publicNum}`)
-  },
-
-  // 个人专利管理接口 - 上传个人专利
-  createUserPatent: (patentData: {
-    category: string
-    title: string
-    publicNum?: string
-    abstractText?: string
-    ipc?: string
-    cpc?: string
-    applicant?: string
-    inventor?: string
-    visibility?: string
-  }) => {
-    return api.createUserPatent(patentData)
-  },
-
-  // 个人专利管理接口 - 获取个人专利列表
-  getUserPatentsList: (params?: {
-    owner?: string
-    category?: string
-    query?: string
-    visibility?: string
-    page?: number
-    size?: number
-  }) => {
-    return api.getUserPatents(params)
-  },
-
-  // 个人专利管理接口 - 获取个人专利详情
+  // 获取个人专利详情
   getUserPatentDetail: (id: number) => {
     return api.getUserPatentDetail(id)
   },
 
-  // 个人专利管理接口 - 修改个人专利
-  updateUserPatent: (id: number, patentData: {
-    category?: string
-    title?: string
-    publicNum?: string
-    abstractText?: string
-    ipc?: string
-    cpc?: string
-    applicant?: string
-    inventor?: string
-    visibility?: string
-  }) => {
+  // 创建个人专利
+  createUserPatent: (patentData: CreateUserPatentParams) => {
+    return api.createUserPatent(patentData)
+  },
+
+  // 更新个人专利
+  updateUserPatent: (id: number, patentData: UpdateUserPatentParams) => {
     return api.updateUserPatent(id, patentData)
   },
 
-  // 个人专利管理接口 - 删除个人专利
-  deleteUserPatentById: (id: number) => {
+  // 删除个人专利
+  deleteUserPatent: (id: number) => {
     return api.deleteUserPatent(id)
   }
 }
@@ -625,6 +578,21 @@ export const requirementApi = {
   // 创建需求
   createRequirement: (requirementData: CreateRequirementParams) => {
     return api.createRequirement(requirementData)
+  },
+
+  // 获取当前用户的需求列表
+  getMyRequirements: () => {
+    return api.getMyRequirements()
+  },
+
+  // 获取所有用户的需求列表（用于需求广场）
+  getAllRequirements: (params?: { page?: number; size?: number; query?: string }) => {
+    return api.getAllRequirements(params)
+  },
+
+  // 删除需求
+  deleteRequirement: (requirementId: number) => {
+    return api.deleteRequirement(requirementId)
   },
 
   // 需求匹配专利

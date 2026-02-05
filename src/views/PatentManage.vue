@@ -45,8 +45,8 @@
         <el-col :span="6">
           <el-card class="stat-card">
             <div class="stat-content">
-              <div class="stat-number">{{ userPatents.filter(p => p.category === 'solar').length }}</div>
-              <div class="stat-label">太阳能专利</div>
+              <div class="stat-number">{{ getCategoryCount() }}</div>
+              <div class="stat-label">专利类别数</div>
             </div>
           </el-card>
         </el-col>
@@ -196,6 +196,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { patentApi } from '@/api'
+import type { UserPatent, CreateUserPatentParams, UpdateUserPatentParams } from '@/types'
 
 // 专利表单类型定义 - 匹配后端接口
 interface PatentFormData {
@@ -207,7 +208,7 @@ interface PatentFormData {
   cpc?: string
   applicant?: string
   inventor?: string
-  visibility?: string
+  visibility?: 'PUBLIC' | 'PRIVATE'
   id?: number
   ownerUserId?: number
   createdAt?: string
@@ -245,7 +246,7 @@ const searchForm = reactive<SearchForm>({
 })
 
 // 用户个人专利数据（从后端API获取）
-const userPatents = ref<PatentFormData[]>([])
+const userPatents = ref<UserPatent[]>([])
 
 // 加载用户个人专利列表
 const loadUserPatents = async () => {
@@ -258,8 +259,8 @@ const loadUserPatents = async () => {
       size: pageSize.value
     })
     
-    if (response && response.data) {
-      userPatents.value = response.data
+    if (response) {
+      userPatents.value = response
       console.log('用户专利数据加载成功:', userPatents.value.length)
     } else {
       console.error('API返回的数据格式异常:', response)
@@ -302,6 +303,12 @@ const filteredPatents = computed(() => {
 // 获取状态统计（根据可见性统计）
 const getVisibilityCount = (visibility: string) => {
   return userPatents.value.filter(p => p.visibility === visibility).length
+}
+
+// 获取专利类别数统计
+const getCategoryCount = () => {
+  const categories = new Set(userPatents.value.map(p => p.category))
+  return categories.size
 }
 
 // 获取可见性标签类型
@@ -415,15 +422,9 @@ const submitPatent = async () => {
 }
 
 // 查看专利详情
-const viewPatent = async (patent: PatentFormData) => {
-  if (!patent.id) {
-    ElMessage.warning('无法获取专利详情')
-    return
-  }
-  
+const viewPatent = async (patent: UserPatent) => {
   try {
-    const response = await patentApi.getUserPatentDetail(patent.id)
-    const detail = response.data
+    const detail = await patentApi.getUserPatentDetail(patent.id)
     
     ElMessageBox.alert(
       `<div>
@@ -451,19 +452,14 @@ const viewPatent = async (patent: PatentFormData) => {
 }
 
 // 编辑专利
-const editPatent = (patent: PatentFormData) => {
+const editPatent = (patent: UserPatent) => {
   uploadDialogTitle.value = '编辑专利'
   Object.assign(patentForm, patent)
   uploadDialogVisible.value = true
 }
 
 // 删除专利
-const deletePatent = async (patent: PatentFormData) => {
-  if (!patent.id) {
-    ElMessage.warning('无法删除该专利')
-    return
-  }
-  
+const deletePatent = async (patent: UserPatent) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除专利"${patent.title}"吗？此操作不可恢复。`,
@@ -475,7 +471,7 @@ const deletePatent = async (patent: PatentFormData) => {
       }
     )
     
-    await patentApi.deleteUserPatentById(patent.id)
+    await patentApi.deleteUserPatent(patent.id)
     ElMessage.success('专利删除成功')
     loadUserPatents() // 重新加载列表
   } catch (error) {

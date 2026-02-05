@@ -114,10 +114,10 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/requirement',
     name: 'Requirement',
-    component: () => import('../views/RequirementManage.vue'), // 懒加载需求管理页面
+    component: () => import('../views/RequirementManage.vue'), // 懒加载需求广场页面
     meta: { 
-      title: '需求管理',
-      requiresAuth: true, // 假设需求管理需要登录
+      title: '需求广场',
+      requiresAuth: false, // 需求广场不需要登录
       transition: 'fade'
     }
   },

@@ -74,31 +74,6 @@
             />
           </el-form-item>
           
-          <el-form-item label="预算范围">
-            <el-slider
-              v-model="demandForm.budgetRange"
-              :min="0"
-              :max="1000"
-              :step="50"
-              show-stops
-              show-input
-              input-size="small"
-              style="width: 50%;"
-            />
-            <div class="budget-text">{{ getBudgetText(demandForm.budgetRange) }}</div>
-          </el-form-item>
-          
-          <el-form-item label="期望完成时间">
-            <el-date-picker
-              v-model="demandForm.expectedCompletionTime"
-              type="date"
-              placeholder="选择期望完成时间"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              style="width: 300px;"
-            />
-          </el-form-item>
-          
           <el-form-item>
             <el-button type="primary" @click="submitDemand" :loading="submitting">
               {{ submitting ? '发布中...' : '发布需求' }}
@@ -126,14 +101,6 @@
             <span>{{ demandForm.keywords }}</span>
           </div>
           <div class="preview-item">
-            <label>预算范围:</label>
-            <span>{{ getBudgetText(demandForm.budgetRange) }}</span>
-          </div>
-          <div class="preview-item">
-            <label>期望完成时间:</label>
-            <span>{{ demandForm.expectedCompletionTime || '未设定' }}</span>
-          </div>
-          <div class="preview-item">
             <label>需求详情:</label>
             <div class="preview-detail" v-html="sanitizedDescription"></div>
           </div>
@@ -144,41 +111,171 @@
         </template>
       </el-dialog>
     </div>
+
+    <!-- 我的需求模块 -->
+    <div class="container" style="margin-top: 30px;">
+      <el-card class="my-demands-card">
+        <template #header>
+          <div class="card-header">
+            <span>我的需求</span>
+            <div class="header-actions">
+              <el-button size="small" @click="refreshMyRequirements">
+                <el-icon><Refresh /></el-icon>
+                刷新
+              </el-button>
+              <el-button size="small" @click="toggleSortOrder">
+                <el-icon><Sort /></el-icon>
+                {{ sortOrder === 'asc' ? '升序' : '降序' }}
+              </el-button>
+            </div>
+          </div>
+        </template>
+
+        <div v-if="myRequirementsLoading" class="loading-container">
+          <el-skeleton :rows="5" animated />
+        </div>
+
+        <div v-else-if="myRequirements.length === 0" class="empty-container">
+          <el-empty description="暂无已发布的需求" />
+        </div>
+
+        <div v-else class="my-demands-list">
+          <el-table 
+            :data="sortedRequirements" 
+            style="width: 100%"
+            :default-sort="{ prop: 'createdDate', order: sortOrder === 'asc' ? 'ascending' : 'descending' }"
+          >
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="title" label="标题" show-overflow-tooltip />
+            <el-table-column prop="techDirection" label="技术方向" width="120" show-overflow-tooltip />
+            <el-table-column prop="cooperationMode" label="合作模式" width="120" show-overflow-tooltip />
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="getStatusType(row.status)">
+                  {{ getStatusText(row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdDate" label="发布时间" width="150" sortable />
+            <el-table-column label="操作" width="200">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" @click="viewMyRequirementDetail(row)">
+                  查看详情
+                </el-button>
+                <el-button size="small" type="danger" @click="deleteMyRequirement(row)">
+                  删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-card>
+    </div>
+
+    <!-- 我的需求详情对话框 -->
+    <el-dialog 
+      v-model="myRequirementDetailVisible" 
+      :title="myRequirementDialogTitle" 
+      width="60%" 
+      :before-close="closeMyRequirementDetail"
+    >
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="ID">{{ currentMyRequirement.id }}</el-descriptions-item>
+        <el-descriptions-item label="标题">{{ currentMyRequirement.title }}</el-descriptions-item>
+        <el-descriptions-item label="技术方向" v-if="currentMyRequirement.techDirection">{{ currentMyRequirement.techDirection }}</el-descriptions-item>
+        <el-descriptions-item label="合作模式" v-if="currentMyRequirement.cooperationMode">{{ currentMyRequirement.cooperationMode }}</el-descriptions-item>
+        <el-descriptions-item label="关键词" v-if="currentMyRequirement.keywords" :span="2">
+          {{ currentMyRequirement.keywords }}
+        </el-descriptions-item>
+        <el-descriptions-item label="详情" v-if="currentMyRequirement.description" :span="2">
+          <div v-html="sanitizedMyRequirementDescription"></div>
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(currentMyRequirement.status)">
+            {{ getStatusText(currentMyRequirement.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="发布时间">{{ currentMyRequirement.createdDate }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="closeMyRequirementDetail">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { requirementApi } from '@/api'
-import type { CreateRequirementParams } from '@/types'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { requirementApi, authApi } from '@/api'
+import type { CreateRequirementParams, Requirement } from '@/types'
 import DOMPurify from 'dompurify'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import { Refresh, Sort } from '@element-plus/icons-vue'
 
 // 需求表单
-const demandForm = reactive<CreateRequirementParams & { budgetRange: number, expectedCompletionTime?: string }>({
+const demandForm = reactive<CreateRequirementParams>({
   title: '',
   description: '',
   keywords: '',
   techDirection: '',
-  cooperationMode: '技术转让',
-  budgetRange: 0,
-  expectedCompletionTime: ''
+  cooperationMode: '技术转让'
 })
 
 const demandFormRef = ref()
 const submitting = ref(false)
 const previewVisible = ref(false)
 const editor = ref<Editor>()
+const currentUserInfo = ref<any>(null)
+
+// 我的需求相关变量
+const myRequirements = ref<Requirement[]>([])
+const myRequirementsLoading = ref(false)
+const sortOrder = ref<'asc' | 'desc'>('desc') // 默认按发布时间降序
+const myRequirementDetailVisible = ref(false)
+const myRequirementDialogTitle = ref('')
+const currentMyRequirement = ref<Requirement>({} as Requirement)
 
 // 安全渲染的计算属性
 const sanitizedDescription = computed(() => {
   return DOMPurify.sanitize(demandForm.description || '')
 })
 
-// 初始化编辑器
+// 我的需求详情安全渲染
+const sanitizedMyRequirementDescription = computed(() => {
+  return DOMPurify.sanitize(currentMyRequirement.value.description || '')
+})
+
+// 排序后的需求列表
+const sortedRequirements = computed(() => {
+  const requirements = [...myRequirements.value]
+  return requirements.sort((a, b) => {
+    const dateA = new Date(a.createdDate).getTime()
+    const dateB = new Date(b.createdDate).getTime()
+    return sortOrder.value === 'asc' ? dateA - dateB : dateB - dateA
+  })
+})
+
+// 获取当前用户信息
+const loadCurrentUserInfo = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (token) {
+      const userData = await authApi.getCurrentUser()
+      currentUserInfo.value = userData
+      console.log('当前用户信息:', userData)
+      
+      // 加载我的需求列表
+      loadMyRequirements()
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
+
+// 初始化编辑器和用户信息
 onMounted(() => {
   editor.value = new Editor({
     content: demandForm.description || '',
@@ -193,13 +290,106 @@ onMounted(() => {
       demandForm.description = editor.getHTML()
     },
   })
+  
+  // 加载用户信息
+  loadCurrentUserInfo()
 })
 
 onBeforeUnmount(() => {
   editor.value?.destroy()
 })
 
-// 表单验证规则
+// 获取我的需求列表
+const loadMyRequirements = async () => {
+  if (!currentUserInfo.value) {
+    return
+  }
+  
+  myRequirementsLoading.value = true
+  try {
+    const response = await requirementApi.getMyRequirements()
+    myRequirements.value = response || []
+  } catch (error: any) {
+    console.error('获取我的需求失败:', error)
+    ElMessage.error(error.message || '获取需求列表失败')
+    myRequirements.value = []
+  } finally {
+    myRequirementsLoading.value = false
+  }
+}
+
+// 刷新我的需求
+const refreshMyRequirements = () => {
+  loadMyRequirements()
+}
+
+// 切换排序顺序
+const toggleSortOrder = () => {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+}
+
+// 查看我的需求详情
+const viewMyRequirementDetail = (requirement: Requirement) => {
+  currentMyRequirement.value = requirement
+  myRequirementDialogTitle.value = `需求详情 - ${requirement.title}`
+  myRequirementDetailVisible.value = true
+}
+
+// 关闭我的需求详情对话框
+const closeMyRequirementDetail = () => {
+  myRequirementDetailVisible.value = false
+  currentMyRequirement.value = {} as Requirement
+}
+
+// 删除我的需求
+const deleteMyRequirement = async (requirement: Requirement) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除需求"${requirement.title}"吗？此操作不可恢复。`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    await requirementApi.deleteRequirement(requirement.id)
+    ElMessage.success('删除成功')
+    
+    // 刷新需求列表
+    loadMyRequirements()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      console.error('删除需求失败:', error)
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
+// 获取状态文本
+const getStatusText = (status: string) => {
+  const statusMap: Record<string, string> = {
+    'PENDING': '待处理',
+    'PROCESSING': '处理中',
+    'COMPLETED': '已完成',
+    'FAILED': '失败'
+  }
+  return statusMap[status] || status
+}
+
+// 获取状态标签类型
+const getStatusType = (status: string) => {
+  const typeMap: Record<string, string> = {
+    'PENDING': 'info',
+    'PROCESSING': 'warning',
+    'COMPLETED': 'success',
+    'FAILED': 'danger'
+  }
+  return typeMap[status] || 'info'
+}
+
+// 表单验证规则 - 根据后端接口规范，只有title是必填字段
 const demandRules = {
   title: [
     { required: true, message: '请输入需求标题', trigger: 'blur' },
@@ -211,13 +401,16 @@ const demandRules = {
   cooperationMode: [
     { required: true, message: '请选择合作模式', trigger: 'change' }
   ],
+  keywords: [
+    { required: true, message: '请输入关键词', trigger: 'blur' }
+  ],
   description: [
     { required: true, message: '请输入需求详情', trigger: 'blur' }
   ]
 }
 
 // 预览表单
-const previewForm = reactive<CreateRequirementParams & { budgetRange: number, expectedCompletionTime?: string }>({...demandForm})
+const previewForm = reactive<CreateRequirementParams>({...demandForm})
 
 // 提交需求
 const submitDemand = async () => {
@@ -228,14 +421,21 @@ const submitDemand = async () => {
     
     submitting.value = true
     
-    // 调用后端接口发布需求
-    await requirementApi.createRequirement({
+    // 构建请求数据，根据后端接口规范
+    const requestData: CreateRequirementParams = {
       title: demandForm.title,
-      description: demandForm.description,
-      keywords: demandForm.keywords,
-      techDirection: demandForm.techDirection,
-      cooperationMode: demandForm.cooperationMode
-    })
+      description: demandForm.description || undefined,
+      keywords: demandForm.keywords || undefined,
+      techDirection: demandForm.techDirection || undefined,
+      cooperationMode: demandForm.cooperationMode || undefined,
+      // 尝试获取用户机构ID
+      requesterOrgId: currentUserInfo.value?.primaryOrganization?.id || 
+                     currentUserInfo.value?.organizationId || 
+                     undefined
+    }
+    
+    // 调用后端接口发布需求
+    await requirementApi.createRequirement(requestData)
     
     ElMessage.success('需求发布成功！')
     resetForm()
@@ -243,7 +443,8 @@ const submitDemand = async () => {
     if (error.message === 'error fields') {
       // 验证错误，已在验证器中提示
     } else {
-      ElMessage.error(error.message || '发布需求失败')
+      console.error('发布需求失败:', error)
+      ElMessage.error(error.message || '发布需求失败，请稍后重试')
     }
   } finally {
     submitting.value = false
@@ -282,21 +483,13 @@ const resetForm = () => {
   demandForm.keywords = ''
   demandForm.techDirection = ''
   demandForm.cooperationMode = '技术转让'
-  demandForm.budgetRange = 0
-  demandForm.expectedCompletionTime = ''
   
   if (demandFormRef.value) {
     demandFormRef.value.clearValidate()
   }
 }
 
-// 获取预算文本
-const getBudgetText = (range: number) => {
-  if (range === 0) return '面议'
-  if (range <= 100) return `${range}万元以下`
-  if (range <= 500) return `${range}万元`
-  return `${range}万元以上`
-}
+
 
 </script>
 
@@ -326,9 +519,22 @@ const getBudgetText = (range: number) => {
   margin: 0 auto;
 }
 
+.my-demands-card {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .card-header {
   font-size: 18px;
   font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .demand-form {
@@ -361,6 +567,27 @@ const getBudgetText = (range: number) => {
   overflow-y: auto;
 }
 
+.loading-container {
+  padding: 20px;
+}
+
+.empty-container {
+  padding: 40px 0;
+}
+
+.my-demands-list {
+  margin-top: 10px;
+}
+
+.preview-detail {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--el-border-radius-base);
+  padding: 10px;
+  background-color: var(--el-fill-color-blank);
+}
+
 .preview-content h3 {
   margin-bottom: 20px;
   color: var(--text-primary);
@@ -376,10 +603,5 @@ const getBudgetText = (range: number) => {
   font-weight: 600;
   color: var(--text-secondary);
   margin-right: 10px;
-}
-
-.preview-detail {
-  margin-top: 10px;
-  line-height: 1.6;
 }
 </style>

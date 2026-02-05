@@ -121,11 +121,11 @@
                   实现知识产权成果的高效转化与价值最大化。
                 </p>
                 <div class="banner-actions">
-                  <el-button type="primary" size="large" @click="goToPatentSearch">
+                  <el-button type="default" size="large" @click="goToPatentSearch">
                     立即搜索专利
                   </el-button>
-                  <el-button type="default" size="large" @click="goToExpertSearch">
-                    寻找专家合作
+                  <el-button type="default" size="large" @click="goToRequirementPublish">
+                    立即发布需求
                   </el-button>
                 </div>
               </div>
@@ -229,7 +229,7 @@
                 <h4 class="footer-title">快速链接</h4>
                 <ul class="footer-links">
                   <li><a href="#" @click.prevent="handleNavSelect('patent')">专利查询</a></li>
-                  <li><a href="#" @click.prevent="handleNavSelect('expert')">专家对接</a></li>
+                  <li><a href="#" @click.prevent="handleNavSelect('transformation')">成果转化</a></li>
                   <li><a href="#" @click.prevent="handleNavSelect('demand')">需求发布</a></li>
                   <li><a href="#" @click.prevent="handleNavSelect('evaluation')">价值评估</a></li>
                   <li><a href="#" @click.prevent="loadMoreCases">成功案例</a></li>
@@ -256,11 +256,11 @@
                   </div>
                   <div class="contact-item">
                     <el-icon><Message /></el-icon>
-                    <span>contact@ip-platform.edu.cn</span>
+                    <span>xxxxxx.edu.cn</span>
                   </div>
                   <div class="contact-item">
                     <el-icon><Location /></el-icon>
-                    <span>北京市海淀区中关村大街1号</span>
+                    <span>天津市北辰区河北工业大学</span>
                   </div>
                 </div>
               </div>
@@ -363,9 +363,9 @@ const features = ref<FeatureItem[]>([
   },
   {
     icon: markRaw(User),
-    title: '专家对接',
+    title: '成果转化',
     description: '汇聚各领域专家资源，实现需求与专家的精准匹配，助力技术难题解决与项目合作。',
-    to: '/expert'
+    to: '/transformation'
   },
   {
     icon: markRaw(EditPen),
@@ -603,6 +603,16 @@ const goToPatentSearch = () => {
   } else {
     ElMessage.warning('请先登录后使用专利查询功能')
     router.push('/login?redirect=/patent')
+  }
+}
+
+// 跳转到专家查询
+const goToRequirementPublish = () => {
+  if (isLogin.value) {
+    router.push('/demand')
+  } else {
+    ElMessage.warning('请先登录后使用需求发布功能')
+    router.push('/login?redirect=/demand')
   }
 }
 

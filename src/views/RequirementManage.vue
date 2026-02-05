@@ -1,19 +1,33 @@
 <template>
-  <div class="requirement-manage-container">
+  <div class="requirement-square-container">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <h2 class="page-title">需求广场</h2>
+      <div class="header-actions">
+        <el-button type="primary" @click="goToDemandPublish">
+          <el-icon><Plus /></el-icon>
+          发布需求
+        </el-button>
+      </div>
+    </div>
+
     <!-- 需求搜索区域 -->
     <div class="search-section">
+      <div class="search-header">
+        <span class="search-title">需求搜索</span>
+      </div>
       <el-form :model="searchForm" inline>
         <el-form-item label="搜索关键词">
           <el-input 
             v-model="searchForm.query" 
             placeholder="请输入标题/关键词"
             @keyup.enter="searchRequirements"
+            style="width: 300px;"
           />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="searchRequirements">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
-          <el-button type="success" @click="openAddDialog">发布需求</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -37,12 +51,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdDate" label="发布时间" width="150" />
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" width="150">
           <template #default="{ row }">
-            <el-button size="small" @click="viewRequirement(row)">查看</el-button>
-            <el-button size="small" type="primary" @click="startMatching(row)">开始匹配</el-button>
-            <el-button size="small" type="warning" @click="editRequirement(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="deleteRequirement(row)">删除</el-button>
+            <el-button size="small" type="primary" @click="viewRequirement(row)">查看详情</el-button>
+            <el-button size="small" type="success" @click="startMatching(row)">智能匹配</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -86,52 +98,7 @@
       </el-descriptions>
     </el-dialog>
 
-    <!-- 新增/编辑需求对话框 -->
-    <el-dialog 
-      v-model="formDialogVisible" 
-      :title="dialogTitle" 
-      width="50%" 
-      :before-close="closeFormDialog"
-    >
-      <el-form 
-        :model="requirementForm" 
-        :rules="requirementRules" 
-        ref="requirementFormRef" 
-        label-width="100px"
-      >
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="requirementForm.title" placeholder="请输入需求标题" />
-        </el-form-item>
-        <el-form-item label="关键词">
-          <el-input v-model="requirementForm.keywords" placeholder="请输入关键词，用于匹配" />
-        </el-form-item>
-        <el-form-item label="技术方向">
-          <el-input v-model="requirementForm.techDirection" placeholder="请输入技术方向" />
-        </el-form-item>
-        <el-form-item label="合作模式">
-          <el-select v-model="requirementForm.cooperationMode" placeholder="请选择合作模式" style="width: 100%">
-            <el-option label="技术转让" value="技术转让" />
-            <el-option label="合作开发" value="合作开发" />
-            <el-option label="技术服务" value="技术服务" />
-            <el-option label="其他" value="其他" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="详情">
-          <el-input 
-            v-model="requirementForm.description" 
-            type="textarea" 
-            :rows="4" 
-            placeholder="请输入需求详情"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="closeFormDialog">取消</el-button>
-          <el-button type="primary" @click="saveRequirement">保存</el-button>
-        </span>
-      </template>
-    </el-dialog>
+
 
     <!-- 匹配结果对话框 -->
     <el-dialog 
@@ -184,9 +151,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import { requirementApi, patentApi, expertApi } from '@/api'
 import type { Requirement, CreateRequirementParams, MatchedPatent, MatchedExpert } from '@/types'
+
+const router = useRouter()
 
 // 搜索表单
 const searchForm = reactive({
@@ -205,17 +176,6 @@ const detailDialogVisible = ref(false)
 const dialogTitle = ref('')
 const currentRequirement = ref<Requirement>({} as Requirement)
 
-// 表单对话框相关
-const formDialogVisible = ref(false)
-const requirementForm = reactive<CreateRequirementParams>({
-  title: '',
-  description: '',
-  keywords: '',
-  techDirection: '',
-  cooperationMode: ''
-})
-const requirementFormRef = ref()
-
 // 匹配对话框相关
 const matchingDialogVisible = ref(false)
 const activeTab = ref('patents')
@@ -224,12 +184,9 @@ const matchedExperts = ref<MatchedExpert[]>([])
 const patentLoading = ref(false)
 const expertLoading = ref(false)
 
-// 表单验证规则
-const requirementRules = {
-  title: [
-    { required: true, message: '请输入需求标题', trigger: 'blur' },
-    { min: 2, max: 100, message: '标题长度应在2-100个字符之间', trigger: 'blur' }
-  ]
+// 跳转到需求发布页面
+const goToDemandPublish = () => {
+  router.push('/demand')
 }
 
 // 获取状态文本
@@ -258,14 +215,29 @@ const getStatusType = (status: string) => {
 const searchRequirements = async () => {
   loading.value = true
   try {
-    // 这里简化处理，实际可能需要后端支持搜索
-    // 目前先获取所有需求
-    // TODO: 实现后端搜索接口后替换
-    const result: Requirement[] = [] // 暂时模拟数据
-    requirementList.value = result
-    total.value = result.length
+    const response = await requirementApi.getAllRequirements({
+      page: currentPage.value,
+      size: pageSize.value,
+      query: searchForm.query
+    })
+    
+    if (response) {
+      requirementList.value = response
+      // 这里假设后端返回的是分页数据，实际可能需要根据后端接口调整
+      // 如果后端返回分页信息，应该使用 response.data 和 response.total
+      total.value = response.length
+      console.log('需求数据加载成功:', requirementList.value.length)
+    } else {
+      console.error('API返回的数据格式异常:', response)
+      ElMessage.error('数据格式异常')
+      requirementList.value = []
+      total.value = 0
+    }
   } catch (error: any) {
+    console.error('获取需求列表失败:', error)
     ElMessage.error(error.message || '获取需求列表失败')
+    requirementList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -274,7 +246,20 @@ const searchRequirements = async () => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.query = ''
-  requirementList.value = []
+  currentPage.value = 1
+  searchRequirements()
+}
+
+// 分页处理
+const handleSizeChange = (size: number) => {
+  pageSize.value = size
+  currentPage.value = 1
+  searchRequirements()
+}
+
+const handleCurrentChange = (page: number) => {
+  currentPage.value = page
+  searchRequirements()
 }
 
 // 查看需求详情
@@ -289,69 +274,7 @@ const viewRequirement = async (row: Requirement) => {
   }
 }
 
-// 编辑需求
-const editRequirement = (row: Requirement) => {
-  // 复制数据到表单
-  Object.assign(requirementForm, row)
-  dialogTitle.value = '编辑需求'
-  formDialogVisible.value = true
-}
 
-// 删除需求
-const deleteRequirement = (row: Requirement) => {
-  ElMessageBox.confirm(
-    `确定要删除需求 "${row.title}" 吗？`,
-    '删除确认',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      // 这里需要后端提供删除接口
-      // await requirementApi.deleteRequirement(row.id)
-      ElMessage.success('删除成功')
-      searchRequirements() // 重新搜索
-    } catch (error: any) {
-      ElMessage.error(error.message || '删除失败')
-    }
-  }).catch(() => {
-    // 用户取消操作
-  })
-}
-
-// 打开新增对话框
-const openAddDialog = () => {
-  // 清空表单
-  Object.keys(requirementForm).forEach(key => {
-    (requirementForm as any)[key] = ''
-  })
-  dialogTitle.value = '发布需求'
-  formDialogVisible.value = true
-}
-
-// 保存需求
-const saveRequirement = async () => {
-  if (!requirementFormRef.value) return
-  
-  try {
-    await requirementFormRef.value.validate()
-    
-    // 创建需求
-    await requirementApi.createRequirement(requirementForm)
-    
-    ElMessage.success('发布成功')
-    closeFormDialog()
-    searchRequirements() // 重新搜索
-  } catch (error: any) {
-    if (error.message === 'error fields') {
-      // 验证错误，已在验证器中提示
-    } else {
-      ElMessage.error(error.message || '发布失败')
-    }
-  }
-}
 
 // 开始匹配
 const startMatching = async (row: Requirement) => {
@@ -443,15 +366,6 @@ const closeDetailDialog = () => {
   currentRequirement.value = {} as Requirement
 }
 
-// 关闭表单对话框
-const closeFormDialog = () => {
-  formDialogVisible.value = false
-  if (requirementFormRef.value) {
-    requirementFormRef.value.resetFields()
-  }
-  currentRequirement.value = {} as Requirement
-}
-
 // 关闭匹配对话框
 const closeMatchingDialog = () => {
   matchingDialogVisible.value = false
@@ -460,16 +374,6 @@ const closeMatchingDialog = () => {
   currentRequirement.value = {} as Requirement
 }
 
-// 分页相关方法
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  searchRequirements()
-}
-
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  searchRequirements()
-}
 
 // 初始化数据
 onMounted(() => {
@@ -479,26 +383,85 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.requirement-manage-container {
+.requirement-square-container {
   padding: 20px;
+  background-color: var(--el-bg-color-page);
+  min-height: calc(100vh - 64px);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 16px 24px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.page-title {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .search-section {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
   margin-bottom: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.search-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid #ebeef5;
+  font-weight: 600;
+  font-size: 16px;
+  color: #303133;
+}
+
+.search-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #303133;
+}
+
+.search-section .el-form {
+  padding: 20px;
 }
 
 .requirement-list {
   background: #fff;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .match-content {
   min-height: 400px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .requirement-square-container {
+    padding: 10px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .search-section .el-form-item {
+    margin-bottom: 10px;
+  }
 }
 </style>

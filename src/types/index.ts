@@ -138,11 +138,6 @@ export interface PatentBase {
   patentDetails?: string      // 专利详情
 }
 
-// 用户个人专利信息类型（包含类别信息）
-export interface UserPatent extends PatentBase {
-  category?: string           // 专利类别
-}
-
 // 专利类别枚举
 export type PatentCategory = 'wind' | 'solar' | 'biomass' | 'hydrogen' | 'lilon'
 
@@ -191,8 +186,61 @@ export interface CreateRequirementParams {
   title: string
   description?: string
   keywords?: string
-  techDirection?: string
-  cooperationMode?: string
+  techDirection?: string   //技术方向
+  cooperationMode?: string   //合作模式
+  requesterOrgId?: number   //需求方ID
+}
+
+// 个人专利信息类型
+export interface UserPatent {
+  id: number
+  category: string
+  title: string
+  publicNum?: string
+  abstractText?: string
+  ipc?: string
+  cpc?: string
+  applicant?: string
+  inventor?: string
+  visibility: 'PUBLIC' | 'PRIVATE'
+  ownerUserId: number
+  createdAt: string
+}
+
+// 创建个人专利参数
+export interface CreateUserPatentParams {
+  category: string
+  title: string
+  publicNum?: string
+  abstractText?: string
+  ipc?: string
+  cpc?: string
+  applicant?: string
+  inventor?: string
+  visibility?: 'PUBLIC' | 'PRIVATE'
+}
+
+// 更新个人专利参数
+export interface UpdateUserPatentParams {
+  category?: string
+  title?: string
+  publicNum?: string
+  abstractText?: string
+  ipc?: string
+  cpc?: string
+  applicant?: string
+  inventor?: string
+  visibility?: 'PUBLIC' | 'PRIVATE'
+}
+
+// 个人专利查询参数
+export interface UserPatentQueryParams {
+  owner?: string  // 'me' 查看我的专利，不传查看所有公开专利
+  category?: string
+  query?: string
+  visibility?: 'PUBLIC' | 'PRIVATE'
+  page?: number
+  size?: number
 }
 
 // 匹配专利结果类型
