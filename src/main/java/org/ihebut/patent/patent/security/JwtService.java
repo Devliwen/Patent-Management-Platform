@@ -18,7 +18,7 @@ public class JwtService {
 
     public JwtService(
             @Value("${jwt.secret:}") String secret,
-            @Value("${jwt.expirationMs:86400000}") long expirationMs
+            @Value("${jwt.expirationMs:600000}") long expirationMs
     ) {
         this.expirationMs = expirationMs;
         if (secret == null || secret.isBlank()) {
