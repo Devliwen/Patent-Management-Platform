@@ -16,7 +16,7 @@ public class PatentEsController {
         this.patentEsService = patentEsService;
     }
 
-    @GetMapping("/search")
+    @GetMapping({"/search", "/search/"})
     public ApiResponse<PatentEsSearchResponse> search(
             @RequestParam(required = false) String category,
             @RequestParam String query,
@@ -33,7 +33,7 @@ public class PatentEsController {
         }
     }
 
-    @GetMapping("/status")
+    @GetMapping({"/status", "/status/"})
     public ApiResponse<PatentEsStatusResponse> status() {
         try {
             return ApiResponse.ok(patentEsService.status());
@@ -44,7 +44,7 @@ public class PatentEsController {
         }
     }
 
-    @PostMapping("/reindex")
+    @PostMapping({"/reindex", "/reindex/"})
     public ApiResponse<Void> reindex(@RequestParam(required = false) String category) {
         try {
             if (category == null || category.isBlank()) {
@@ -60,7 +60,7 @@ public class PatentEsController {
         }
     }
 
-    @PostMapping("/index-one")
+    @PostMapping({"/index-one", "/index-one/"})
     public ApiResponse<Void> indexOne(@RequestParam String category, @RequestParam String publicNum) {
         try {
             patentEsService.indexOne(category, publicNum);
