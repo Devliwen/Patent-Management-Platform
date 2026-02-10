@@ -551,25 +551,15 @@ GET /api/patents/wind/CN123456789A
 
 请求参数格式：queryString
 
-请求参数说明：
-
-| 参数名称   | 说明       | 类型   | 是否必须 | 备注                                 |
-| ---------- | ---------- | ------ | -------- | ------------------------------------ |
-| owner      | 所属       | string | 否       | 传 me 表示当前用户                   |
-| query      | 查询关键字 | string | 否       | 在 title/abstract/applicant/inventor 中搜索 |
-| category   | 专利类别   | string | 否       |                                      |
-| visibility | 可见性     | string | 否       | PUBLIC/PRIVATE                       |
-
-请求数据样例：
-
-```shell
-GET /api/user-patents?owner=me
-GET /api/user-patents?query=新能源
-```
+| 参数名称 | 说明 | 类型 | 是否必须 | 备注 |
+| --- | --- | --- | --- | --- |
+| query | 查询关键字 | string | 否 | 模糊匹配标题或关键词 |
+| category | 专利类别/技术方向 | string | 否 | wind/solar/biomass/hydrogen/lilon |
+| mine | 是否仅本人 | boolean | 否 | true=仅本人 |
+| page | 页码 | number | 否 | 默认0 |
+| size | 页大小 | number | 否 | 默认10 |
 
 #### 3.2.3 响应数据
-
-响应数据类型：application/json
 
 响应数据样例：
 
@@ -577,14 +567,22 @@ GET /api/user-patents?query=新能源
 {
   "code": 0,
   "message": "操作成功",
-  "data": [
-    {
-      "id": 1,
-      "category": "solar",
-      "title": "高效太阳能板",
-      "visibility": "PUBLIC"
-    }
-  ]
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "title": "需求标题",
+        "description": "需求描述",
+        "keywords": "关键词1,关键词2",
+        "techDirection": "wind",
+        "requesterUserId": 101,
+        "createdDate": "2026-02-10T12:00:00"
+      }
+    ],
+    "pageable": { ... },
+    "totalElements": 1,
+    "totalPages": 1
+  }
 }
 ```
 

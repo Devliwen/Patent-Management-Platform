@@ -613,6 +613,41 @@
 					"response": []
 				},
 				{
+					"name": "05.02a 查询需求列表（mine=true）",
+					"request": {
+						"method": "GET",
+						"header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/requirements?mine=true",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "requirements" ],
+							"query": [
+								{ "key": "mine", "value": "true" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "05.02b 查询需求列表（category/query）",
+					"request": {
+						"method": "GET",
+						"header": [ { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" } ],
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/requirements?query=设备&category=时序异常检测",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "requirements" ],
+							"query": [
+								{ "key": "query", "value": "设备" },
+								{ "key": "category", "value": "时序异常检测" }
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "05.03 需求匹配专家",
 					"request": {
 						"method": "GET",

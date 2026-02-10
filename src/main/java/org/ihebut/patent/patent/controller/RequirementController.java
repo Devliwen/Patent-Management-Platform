@@ -5,6 +5,8 @@ import org.ihebut.patent.patent.entity.*;
 import org.ihebut.patent.patent.mapper.*;
 import org.ihebut.patent.patent.security.CurrentUser;
 import org.ihebut.patent.patent.service.PatentTableService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -60,6 +62,25 @@ public class RequirementController {
         r.setRequesterUserId(userId);
         r.setRequesterOrgId(request.getRequesterOrgId());
         return ApiResponse.ok(requirementMapper.save(r));
+    }
+
+    @GetMapping
+    public ApiResponse<Page<Requirement>> list(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false, defaultValue = "false") boolean mine,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        PageRequest pageable = PageRequest.of(page, size);
+        if (mine) {
+            long userId = currentUser.requireUserId();
+            return ApiResponse.ok(requirementMapper.findByRequesterUserIdOrderByCreatedDateDesc(userId, pageable));
+        }
+        // techDirection 对应 category
+        String techDirection = (category != null && !category.isBlank()) ? category.trim() : null;
+        String q = (query != null && !query.isBlank()) ? query.trim() : null;
+        return ApiResponse.ok(requirementMapper.search(techDirection, q, pageable));
     }
 
     @GetMapping("/{id}/match-patents")
@@ -126,14 +147,29 @@ public class RequirementController {
         }
         if (request != null && request.getItems() != null) {
             for (RequirementPatentMatchPersistRequest.Item item : request.getItems()) {
-                RequirementPatentMatch m = new RequirementPatentMatch();
-                m.setRequirementId(id);
-                m.setPatentSource("EXTERNAL");
-                m.setPatentCategory(item.getPatentCategory());
-                m.setPatentPublicNum(item.getPatentPublicNum());
-                m.setMatchScore(toScore(item.getMatchScore()));
-                m.setMatchReason(item.getMatchReason());
-                requirementPatentMatchMapper.save(m);
+                String source = "EXTERNAL";
+                // 检查是否已存在
+                var existing = requirementPatentMatchMapper.findByRequirementIdAndPatentSourceAndPatentCategoryAndPatentPublicNum(
+                        id, source, item.getPatentCategory(), item.getPatentPublicNum()
+                );
+
+                if (existing.isPresent()) {
+                    // 更新分数和理由
+                    RequirementPatentMatch m = existing.get();
+                    m.setMatchScore(toScore(item.getMatchScore()));
+                    m.setMatchReason(item.getMatchReason());
+                    requirementPatentMatchMapper.save(m);
+                } else {
+                    // 插入新记录
+                    RequirementPatentMatch m = new RequirementPatentMatch();
+                    m.setRequirementId(id);
+                    m.setPatentSource(source);
+                    m.setPatentCategory(item.getPatentCategory());
+                    m.setPatentPublicNum(item.getPatentPublicNum());
+                    m.setMatchScore(toScore(item.getMatchScore()));
+                    m.setMatchReason(item.getMatchReason());
+                    requirementPatentMatchMapper.save(m);
+                }
             }
         }
         return ApiResponse.ok();
