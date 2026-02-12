@@ -1085,7 +1085,7 @@
 					"response": []
 				},
 				{
-					"name": "12.02 AI专利问答（基于专利内容）",
+					"name": "12.02 AI专利检索（需求/场景驱动）",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1094,7 +1094,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"publicNum\": \"CN_TEST_001\",\n  \"question\": \"这项专利的核心技术是什么？\",\n  \"sessionId\": \"session_123\"\n}",
+							"raw": "{\n  \"requirement\": \"我想找关于风力发电机叶片除冰的技术方案\",\n  \"sessionId\": \"session_123\"\n}",
 							"options": { "raw": { "language": "json" } }
 						},
 						"url": {

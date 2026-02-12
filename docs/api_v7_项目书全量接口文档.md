@@ -1375,13 +1375,13 @@ Body 参数：
 }
 ```
 
-### 12.2 AI 专利问答（基于专利内容）
+### 12.2 AI 专利检索（需求/场景驱动）
 
 > 请求路径：/api/ai/chat/patent
 >
 > 请求方式：POST
 >
-> 接口描述：根据专利公开号检索专利内容（标题、摘要、详情），构建上下文后调用专用 AI 应用（App API）进行问答。
+> 接口描述：用户输入一段“需求描述/应用场景”，后端调用专利检索专用 AI 应用分析并输出相关专利公开号（空格分隔），再通过 ES 批量检索专利详情并返回。
 >
 > 认证要求：无需登录
 
@@ -1389,16 +1389,14 @@ Body 参数：
 
 | 参数名称 | 说明 | 类型 | 是否必须 | 备注 |
 | --- | --- | --- | --- | --- |
-| publicNum | 专利公开号 | string | 是 | 例如 CN123456789A |
-| question | 问题内容 | string | 是 | |
-| sessionId | 会话ID | string | 否 | 用于保持多轮对话上下文 |
+| requirement | 需求描述/应用场景 | string | 是 | 例如“风力发电机叶片除冰装置” |
+| sessionId | 会话ID | string | 否 | 传入后可用于保持多轮对话上下文 |
 
 请求数据样例：
 
 ```json
 {
-  "publicNum": "CN123456789A",
-  "question": "这项专利的核心创新点是什么？",
+  "requirement": "我想找关于风力发电机叶片除冰的技术方案",
   "sessionId": "session_123"
 }
 ```
@@ -1410,9 +1408,22 @@ Body 参数：
   "code": 0,
   "message": "操作成功",
   "data": {
-    "answer": "该专利的核心创新点在于......",
-    "model": "app-8f9c...",
-    "requestId": "xxx"
+    "requestId": "b6fbdb1f-8ddb-4be2-bc6a-d9719045bd9d",
+    "aiAnalysis": "CN1620552A RU2012137235A CN1291683A",
+    "extractedPublicNums": [
+      "CN1620552A",
+      "RU2012137235A",
+      "CN1291683A"
+    ],
+    "notFoundPublicNums": [],
+    "patents": [
+      {
+        "category": "wind",
+        "publicNum": "CN1620552A",
+        "title": "xxx",
+        "abstractText": "xxx"
+      }
+    ]
   }
 }
 ```
