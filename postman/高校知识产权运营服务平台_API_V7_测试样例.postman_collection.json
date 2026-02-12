@@ -1083,6 +1083,28 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "12.02 AI专利问答（基于专利内容）",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}", "type": "text" },
+							{ "key": "Content-Type", "value": "application/json", "type": "text" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"publicNum\": \"CN_TEST_001\",\n  \"question\": \"这项专利的核心技术是什么？\",\n  \"sessionId\": \"session_123\"\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": {
+							"raw": "{{主机}}:{{端口}}/api/ai/chat/patent",
+							"host": [ "{{主机}}" ],
+							"port": "{{端口}}",
+							"path": [ "api", "ai", "chat", "patent" ]
+						}
+					},
+					"response": []
 				}
 			]
 		},

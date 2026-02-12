@@ -1375,6 +1375,48 @@ Body 参数：
 }
 ```
 
+### 12.2 AI 专利问答（基于专利内容）
+
+> 请求路径：/api/ai/chat/patent
+>
+> 请求方式：POST
+>
+> 接口描述：根据专利公开号检索专利内容（标题、摘要、详情），构建上下文后调用专用 AI 应用（App API）进行问答。
+>
+> 认证要求：无需登录
+
+请求参数格式：application/json
+
+| 参数名称 | 说明 | 类型 | 是否必须 | 备注 |
+| --- | --- | --- | --- | --- |
+| publicNum | 专利公开号 | string | 是 | 例如 CN123456789A |
+| question | 问题内容 | string | 是 | |
+| sessionId | 会话ID | string | 否 | 用于保持多轮对话上下文 |
+
+请求数据样例：
+
+```json
+{
+  "publicNum": "CN123456789A",
+  "question": "这项专利的核心创新点是什么？",
+  "sessionId": "session_123"
+}
+```
+
+响应数据样例：
+
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "answer": "该专利的核心创新点在于......",
+    "model": "app-8f9c...",
+    "requestId": "xxx"
+  }
+}
+```
+
 ---
 
 ## 13. 聊天会话接口（持久化）

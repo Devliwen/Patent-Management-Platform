@@ -146,6 +146,82 @@ public class PatentEsService {
         elasticsearchOperations.indexOps(IndexCoordinates.of(indexName)).refresh();
     }
 
+    /**
+     * 根据公开号精确查找专利
+     */
+    public Optional<PatentSearchDocument> findByPublicNum(String publicNum) {
+        requireEnabled();
+        if (publicNum == null || publicNum.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            var resp = elasticsearchClient.search(s -> s
+                            .index(indexName)
+                            .query(q -> q.term(t -> t.field("public_num").value(publicNum.trim())))
+                            .size(1),
+                    Map.class
+            );
+            if (resp.hits().hits().isEmpty()) {
+                return Optional.empty();
+            }
+            Object srcObj = resp.hits().hits().get(0).source();
+            if (!(srcObj instanceof Map<?, ?> src)) return Optional.empty();
+            return Optional.of(mapToDoc(src));
+        } catch (Exception e) {
+            log.error("ES查询失败 publicNum={}", publicNum, e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * 根据公开号列表批量查找专利
+     */
+    public List<PatentSearchDocument> findByPublicNums(List<String> publicNums) {
+        requireEnabled();
+        // 1. 参数校验与预处理：去空、去重
+        if (publicNums == null || publicNums.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> validNums = publicNums.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        if (validNums.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        try {
+            Query q = Query.of(query -> query.bool(b -> {
+                for (String num : validNums) {
+                    b.should(s -> s.term(t -> t.field("public_num").value(num)));
+                }
+                b.minimumShouldMatch("1");
+                return b;
+            }));
+
+            var resp = elasticsearchClient.search(s -> s
+                            .index(indexName)
+                            .query(q)
+                            .size(validNums.size()),
+                    Map.class
+            );
+
+            // 3. 结果处理：提取 Source 并过滤空值
+            return resp.hits().hits().stream()
+                    .map(h -> h.source())
+                    .filter(java.util.Objects::nonNull)
+                    .filter(src -> src instanceof Map<?, ?>)
+                    .map(src -> mapToDoc((Map<?, ?>) src))
+                    .toList();
+        } catch (Exception e) {
+            log.error("ES批量查询失败 index={} publicNums={}", indexName, validNums, e);
+            throw new ResponseStatusException(BAD_REQUEST, "ES批量查询失败：" + e.getMessage());
+        }
+    }
+
     public PatentEsStatusResponse status() {
         requireEnabled();
         try {
@@ -320,5 +396,28 @@ public class PatentEsService {
         if (a != null && !a.isBlank()) return a;
         if (b != null && !b.isBlank()) return b;
         return null;
+    }
+
+    private static PatentSearchDocument mapToDoc(Map<?, ?> src) {
+        PatentSearchDocument d = new PatentSearchDocument();
+        d.setCategory(getString(src, "category"));
+        String publicNum = firstNonBlank(getString(src, "public_num"), getString(src, "publicNum"));
+        d.setPublicNum(publicNum);
+        String id = firstNonBlank(getString(src, "id"), getString(src, "_id"));
+        if (id == null || id.isBlank()) {
+            if (d.getCategory() != null && publicNum != null) {
+                id = d.getCategory() + ":" + publicNum;
+            }
+        }
+        d.setId(id);
+        d.setTitle(getString(src, "title"));
+        d.setAbstractText(firstNonBlank(getString(src, "abstract"), getString(src, "abstractText")));
+        d.setApplicant(getString(src, "applicant"));
+        d.setInventor(getString(src, "inventor"));
+        d.setIpc(getString(src, "ipc"));
+        d.setCpc(getString(src, "cpc"));
+        d.setNec(getString(src, "nec"));
+        d.setPatentDetails(firstNonBlank(getString(src, "patent_details"), getString(src, "patentDetails")));
+        return d;
     }
 }

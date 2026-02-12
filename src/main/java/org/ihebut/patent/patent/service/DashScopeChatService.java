@@ -21,6 +21,8 @@ public class DashScopeChatService {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private final String apiKey;
+    private final String appId;
+    private final String patentAppId;
     private final String baseUrl;
     private final String defaultModel;
     private final int timeoutMs;
@@ -28,15 +30,20 @@ public class DashScopeChatService {
     public DashScopeChatService(
             ObjectMapper objectMapper,
             @Value("${ai.dashscope.api-key:}") String apiKey,
+            @Value("${ai.dashscope.app-id:}") String appId,
+            @Value("${ai.dashscope.app-id-patent:}") String patentAppId,
             @Value("${ai.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions}") String baseUrl,
             @Value("${ai.dashscope.model:qwen-plus}") String defaultModel,
             @Value("${ai.dashscope.timeout-ms:30000}") int timeoutMs
     ) {
         this.objectMapper = objectMapper;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
+        this.appId = appId == null ? "" : appId.trim();
+        this.patentAppId = patentAppId == null ? "" : patentAppId.trim();
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim();
         this.defaultModel = defaultModel == null ? "qwen-plus" : defaultModel.trim();
         this.timeoutMs = timeoutMs;
+        // 增加连接超时配置，并确保 HttpClient 本身没有过短的默认超时
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(timeoutMs))
                 .build();
@@ -131,5 +138,83 @@ public class DashScopeChatService {
     }
 
     public record Message(String role, String content) {
+    }
+
+    /**
+     * 调用 DashScope App API (应用API)
+     * @param usePatentAppId 是否使用专利专用App ID
+     */
+    public AiChatResponse chatWithApp(String prompt, String sessionId, boolean usePatentAppId) {
+        String targetAppId = usePatentAppId ? patentAppId : appId;
+        if (targetAppId == null || targetAppId.isBlank()) {
+            throw new IllegalStateException("未配置通义千问App ID（" + (usePatentAppId ? "ai.dashscope.app-id-patent" : "ai.dashscope.app-id") + "）");
+        }
+        if (apiKey.isBlank()) {
+            throw new IllegalStateException("未配置通义千问API Key");
+        }
+
+        ObjectNode payload = objectMapper.createObjectNode();
+        ObjectNode input = payload.putObject("input");
+        input.put("prompt", prompt);
+        if (sessionId != null && !sessionId.isBlank()) {
+            input.put("session_id", sessionId);
+        }
+
+        // App API 地址
+        String appUrl = "https://dashscope.aliyuncs.com/api/v1/apps/" + targetAppId + "/completion";
+
+        String body;
+        try {
+            body = objectMapper.writeValueAsString(payload);
+        } catch (Exception e) {
+            throw new IllegalStateException("请求序列化失败");
+        }
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(appUrl))
+                .timeout(Duration.ofMillis(timeoutMs))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> resp;
+        try {
+            resp = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            throw new IllegalStateException("调用通义千问App API失败：" + e.getMessage());
+        }
+
+        if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+            String snippet = resp.body() == null ? "" : resp.body();
+            if (snippet.length() > 500) snippet = snippet.substring(0, 500);
+            throw new IllegalStateException("通义千问App API返回异常，HTTP " + resp.statusCode() + "，body=" + snippet);
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(resp.body());
+            String requestId = root.path("request_id").asText(null);
+            String answer = null;
+            JsonNode output = root.path("output");
+            if (!output.isMissingNode()) {
+                answer = output.path("text").asText();
+            }
+
+            if (answer == null || answer.isBlank()) {
+                throw new IllegalStateException("通义千问App API返回内容为空");
+            }
+            return new AiChatResponse(answer, "app-" + targetAppId, requestId);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("解析通义千问App API响应失败");
+        }
+    }
+
+    /**
+     * 兼容旧接口：默认使用基础App ID
+     */
+    public AiChatResponse chatWithApp(String prompt, String sessionId) {
+        return chatWithApp(prompt, sessionId, false);
     }
 }
