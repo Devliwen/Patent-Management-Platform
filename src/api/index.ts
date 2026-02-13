@@ -315,38 +315,7 @@ class ApiService {
     return this.axiosInstance.delete(url, { params, ...config })
   }
 
-  // 查询专利（按类别）
-  getPatentsByCategory(category?: string, query?: string, page?: number, size?: number) {
-    const params: { category?: string; query?: string; page?: number; size?: number } = {}
-    if (category) {
-      params.category = category
-    }
-    if (query) {
-      params.query = query
-    }
-    if (page !== undefined) {
-      params.page = page
-    }
-    if (size !== undefined) {
-      params.size = size
-    }
-    return this.get<Pageable<PatentBase>>('/patents', params)
-  }
 
-  // 创建专利
-  createPatent(category: string, patentData: Omit<PatentBase, 'category'>) {
-    return this.post<PatentBase>('/patents', patentData, { params: { category } })
-  }
-
-  // 更新专利（如果需要单独接口）
-  updatePatent(category: string, publicNum: string, patentData: Omit<PatentBase, 'category' | 'publicNum'>) {
-    return this.put<PatentBase>(`/patents/${category}/${publicNum}`, patentData)
-  }
-
-  // 获取单条专利
-  getPatentByCategoryAndNum(category: PatentCategory, publicNum: string) {
-    return this.get<PatentBase>(`/patents/${category}/${publicNum}`)
-  }
 
   // 查询专家
   getExperts(query?: string) {
@@ -367,14 +336,21 @@ class ApiService {
     return this.post<Requirement>('/requirements', requirementData)
   }
 
-  // 获取当前用户的需求列表
-  getMyRequirements() {
-    return this.get<Requirement[]>('/requirements/my')
-  }
-
-  // 获取所有用户的需求列表（用于需求广场）
-  getAllRequirements(params?: { page?: number; size?: number; query?: string }) {
-    return this.get<Requirement[]>('/requirements', params)
+  // 查询需求列表（支持分页、筛选条件）
+  getRequirements(params?: { 
+    category?: string; 
+    query?: string; 
+    mine?: boolean; 
+    page?: number; 
+    size?: number; 
+  }) {
+    return this.get<{
+      content: Requirement[];
+      totalElements: number;
+      totalPages: number;
+      size: number;
+      number: number;
+    }>('/requirements', params)
   }
 
   // 删除需求
@@ -448,6 +424,23 @@ class ApiService {
     return this.get<ValuationReport[]>('/valuations', queryParams)
   }
 
+  // ES搜索专利（智能匹配）
+  searchPatentsByES(params: { 
+    query: string; 
+    category?: string; 
+    page?: number; 
+    size?: number; 
+  }) {
+    return this.get<{
+      code: number;
+      message: string;
+      data: {
+        total: number;
+        hits: PatentBase[];
+      }
+    }>('/patents/es/search', params)
+  }
+
   // 更新评估模型参数
   updateValuationParam(key: string, paramData: UpdateValuationParam) {
     return this.put<ApiResponse>(`/valuation-params/${key}`, paramData)
@@ -503,35 +496,14 @@ export const authApi = {
 
 // 专利相关方法
 export const patentApi = {
-  // 查询专利（按类别）
-  getPatents: (params: PatentQueryParams) => {
-    return api.getPatentsByCategory(params.category, params.query, params.page, params.size).then(response => {
-      console.log('专利API返回数据:', {
-        response: response,
-        type: typeof response,
-        isArray: Array.isArray(response),
-        length: Array.isArray(response) ? response.length : 'N/A'
-      })
-      return response
-    }).catch(error => {
-      console.error('专利API错误:', error)
-      throw error
-    })
-  },
-
-  // 创建专利
-  createPatent: (category: string, patentData: Omit<PatentBase, 'category'>) => {
-    return api.createPatent(category, patentData)
-  },
-
-  // 更新专利
-  updatePatent: (category: string, publicNum: string, patentData: Omit<PatentBase, 'category' | 'publicNum'>) => {
-    return api.updatePatent(category, publicNum, patentData)
-  },
-
-  // 获取单条专利
-  getPatent: (category: PatentCategory, publicNum: string) => {
-    return api.getPatentByCategoryAndNum(category, publicNum)
+  // ES搜索专利（智能匹配）
+  searchPatentsByES: (params: { 
+    query: string; 
+    category?: string; 
+    page?: number; 
+    size?: number; 
+  }) => {
+    return api.searchPatentsByES(params)
   },
 
   // 个人专利管理方法
@@ -580,14 +552,15 @@ export const requirementApi = {
     return api.createRequirement(requirementData)
   },
 
-  // 获取当前用户的需求列表
-  getMyRequirements: () => {
-    return api.getMyRequirements()
-  },
-
-  // 获取所有用户的需求列表（用于需求广场）
-  getAllRequirements: (params?: { page?: number; size?: number; query?: string }) => {
-    return api.getAllRequirements(params)
+  // 查询需求列表（支持分页、筛选条件）
+  getRequirements: (params?: { 
+    category?: string; 
+    query?: string; 
+    mine?: boolean; 
+    page?: number; 
+    size?: number; 
+  }) => {
+    return api.getRequirements(params)
   },
 
   // 删除需求

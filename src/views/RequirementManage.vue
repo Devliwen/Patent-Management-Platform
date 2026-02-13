@@ -51,10 +51,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdDate" label="发布时间" width="150" />
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="200">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="viewRequirement(row)">查看详情</el-button>
-            <el-button size="small" type="success" @click="startMatching(row)">智能匹配</el-button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <el-button size="small" type="primary" @click="viewRequirement(row)">查看详情</el-button>
+              <el-button size="small" type="success" @click="startMatching(row)">智能匹配</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -215,18 +217,17 @@ const getStatusType = (status: string) => {
 const searchRequirements = async () => {
   loading.value = true
   try {
-    const response = await requirementApi.getAllRequirements({
-      page: currentPage.value,
-      size: pageSize.value,
-      query: searchForm.query
+    const response = await requirementApi.getRequirements({
+      query: searchForm.query,
+      page: currentPage.value - 1, // 后端接口从0开始
+      size: pageSize.value
     })
     
     if (response) {
-      requirementList.value = response
-      // 这里假设后端返回的是分页数据，实际可能需要根据后端接口调整
-      // 如果后端返回分页信息，应该使用 response.data 和 response.total
-      total.value = response.length
-      console.log('需求数据加载成功:', requirementList.value.length)
+      // 按照ID从小到大排列需求列表
+      requirementList.value = (response.content || []).sort((a, b) => a.id - b.id)
+      total.value = response.totalElements || 0
+      console.log('需求数据加载成功:', requirementList.value.length, '总记录数:', total.value)
     } else {
       console.error('API返回的数据格式异常:', response)
       ElMessage.error('数据格式异常')
@@ -312,9 +313,18 @@ const loadMatchResults = async (requirementId: number) => {
 // 查看专利详情
 const viewPatentDetail = async (row: MatchedPatent) => {
   try {
-    const patent = await patentApi.getPatent(row.category, row.publicNum)
-    // 显示专利详情逻辑
-    ElMessage.info(`查看专利: ${patent.title}`)
+    // 由于API中没有getPatent方法，直接显示专利基本信息
+    ElMessage.info(`查看专利: ${row.title} (${row.publicNum})`)
+    
+    // 可以在这里打开一个新的专利详情页面或对话框
+    // 暂时使用控制台输出详细信息
+    console.log('专利详情:', {
+      公开号: row.publicNum,
+      标题: row.title,
+      类别: row.category,
+      申请人: row.applicant,
+      发明人: row.inventor
+    })
   } catch (error: any) {
     ElMessage.error(error.message || '获取专利详情失败')
   }

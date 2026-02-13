@@ -24,7 +24,7 @@
       >
         <!-- 专利搜索区域 -->
         <div class="search-section">
-          <el-form :model="searchForm" inline>
+          <el-form :model="searchForm">
             <el-form-item label="专利类别">
               <el-select 
                 v-model="searchForm.category" 
@@ -39,42 +39,48 @@
                 <el-option label="锂电池" value="lilon" />
               </el-select>
             </el-form-item>
-            <el-form-item label="搜索关键词（专利号/标题/摘要/申请人/发明人）">
+            <el-form-item label="一句话搜索">
               <el-input 
-                v-model="searchForm.query" 
-                placeholder="请输入关键词"
+                v-model="searchForm.smartQuery" 
+                placeholder="请输入需求语句进行搜索（可包含专利公开号、标题、申请人、发明人等关键词）"
                 @keyup.enter="searchPatents"
+                type="textarea"
+                :rows="1"
+                :autosize="{ minRows: 1, maxRows: 3 }"
+                style="width: 60%;"
               />
             </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="searchPatents">搜索</el-button>
-              <el-button @click="resetSearch">重置</el-button>
+            <el-form-item style="width: 80%; text-align: center; margin-top: 20px;">
+              <el-button type="primary" @click="searchPatents" style="width: 120px; height: 35px;">搜索</el-button>
+              <el-button @click="resetSearch" style="width: 120px; height: 35px; margin-left: 20px;">重置</el-button>
             </el-form-item>
           </el-form>
         </div>
 
         <!-- 专利列表 -->
-        <div class="patent-list">
-          <el-table 
-            :data="patentList" 
-            v-loading="loading"
-            style="width: 100%; table-layout: auto"  <!-- 关键修改：table-layout改为auto，支持自适应 -->
-          >
-            <!-- 公开号：移除固定width，增加min-width保证最小宽度 -->
-            <el-table-column prop="publicNum" label="公开号" min-width="150" />
-            <!-- 标题：移除固定width，增加min-width保证最小宽度 -->
-            <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-            <!-- 其他列微调宽度，保证整体适配 -->
-            <el-table-column prop="applicant" label="申请人" width="150" show-overflow-tooltip />
-            <el-table-column prop="inventor" label="发明人" width="150" show-overflow-tooltip />
-            <el-table-column prop="ipc" label="IPC" width="100" show-overflow-tooltip />
-            <el-table-column prop="appliDate" label="申请日期" width="100" />
-            <el-table-column label="操作" width="80" fixed="right">
-              <template #default="{ row }">
-                <el-button size="small" @click="viewPatent(row)">查看</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+        <div class="patent-list-container">
+          <div class="patent-table-wrapper">
+            <el-table 
+              :data="patentList" 
+              v-loading="loading"
+              style="width: 100%; table-layout: auto"  <!-- 关键修改：table-layout改为auto，支持自适应 -->
+            >
+              <!-- 公开号：移除固定width，增加min-width保证最小宽度 -->
+              <el-table-column prop="publicNum" label="公开号" min-width="150" />
+              <!-- 标题：移除固定width，增加min-width保证最小宽度 -->
+              <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+              <!-- 其他列微调宽度，保证整体适配 -->
+              <el-table-column prop="applicant" label="申请人" width="150" show-overflow-tooltip />
+              <el-table-column prop="inventor" label="发明人" width="150" show-overflow-tooltip />
+              <el-table-column prop="ipc" label="IPC" width="100" show-overflow-tooltip />
+              <el-table-column prop="appliDate" label="申请日期" width="100" />
+              <el-table-column label="操作" width="80" fixed="right">
+                <template #default="{ row }">
+                  <el-button size="small" @click="viewPatent(row)">查看</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
           
           <!-- 分页 -->
           <el-pagination
@@ -84,7 +90,7 @@
             layout="total, sizes, prev, pager, next, jumper"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
-            style="margin-top: 20px; text-align: center;"
+            style="margin-top: 20px; text-align: center; position: sticky; bottom: 0; background: white; padding: 10px 0; z-index: 10;"
           />
         </div>
       </div>
@@ -135,7 +141,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound } from '@element-plus/icons-vue'
 import { patentApi } from '@/api'
 import AIChat from '@/components/AIChat.vue'
-import type { PatentBase, PatentCategory, PatentQueryParams } from '@/types'
+import type { PatentBase, PatentCategory } from '@/types'
 
 // AI聊天功能相关
 const showAIChat = ref(false)
@@ -145,7 +151,7 @@ const isResizing = ref(false)
 // 搜索表单
 const searchForm = reactive({
   category: <PatentCategory | ''>'',
-  query: ''
+  smartQuery: ''
 })
 
 // 专利列表相关
@@ -209,37 +215,67 @@ const stopResize = () => {
 const searchPatents = async () => {
   loading.value = true
   try {
-    const params: PatentQueryParams = {
-      category: searchForm.category,
-      query: searchForm.query,
-      page: currentPage.value,
+    // 使用ES搜索（智能匹配）
+    const esParams = {
+      query: searchForm.smartQuery.trim(),
+      category: searchForm.category || undefined,
+      page: currentPage.value - 1, // ES接口从0开始
       size: pageSize.value
     }
     
-    const result = await patentApi.getPatents(params)
+    console.log('=== ES搜索调试信息 ===')
+    console.log('请求参数:', JSON.stringify(esParams, null, 2))
+    console.log('解码的查询内容:', decodeURIComponent(esParams.query))
     
-    // 调试信息：检查API返回的数据格式
-    console.log('API返回数据:', result)
+    const startTime = Date.now()
+    const esResponse = await patentApi.searchPatentsByES(esParams)
+    const endTime = Date.now()
     
-    // 后端返回的是分页对象，提取content数组
-    if (result && typeof result === 'object' && 'content' in result) {
-      patentList.value = result.content || []
-      total.value = result.totalElements || 0
+    console.log('请求耗时:', endTime - startTime + 'ms')
+    console.log('ES接口完整响应:', JSON.stringify(esResponse, null, 2))
+    
+    // ES接口返回的数据结构 - 支持两种格式
+    if (esResponse && (esResponse as any).code === 0 && (esResponse as any).data) {
+      // 格式1: {code: 0, message: "操作成功", data: {total: 71, hits: [...]}}
+      patentList.value = (esResponse as any).data.hits
+      total.value = (esResponse as any).data.total
+      console.log('ES搜索成功（格式1），返回数据数量:', (esResponse as any).data.hits.length)
       
-      console.log('提取的分页数据:', {
-        contentLength: patentList.value.length,
-        totalElements: total.value,
-        pageable: result.pageable
-      })
+      if ((esResponse as any).data.total === 0) {
+        console.log('🔍 搜索结果为0（合法空结果）')
+        ElMessage.info('未找到相关专利')
+      }
+    } else if (esResponse && (esResponse as any).total !== undefined && (esResponse as any).hits !== undefined) {
+      // 格式2: {total: 71, hits: [...]} - 直接返回数据
+      patentList.value = (esResponse as any).hits
+      total.value = (esResponse as any).total
+      console.log('ES搜索成功（格式2），返回数据数量:', (esResponse as any).hits.length)
+      
+      if ((esResponse as any).total === 0) {
+        console.log('🔍 搜索结果为0（合法空结果）')
+        ElMessage.info('未找到相关专利')
+      }
+    } else if (esResponse && (esResponse as any).code !== undefined) {
+      // 后端返回了错误码
+      console.error('ES搜索返回错误:', esResponse)
+      ElMessage.error(`搜索失败: ${esResponse.message || '未知错误'}`)
+      patentList.value = []
+      total.value = 0
     } else {
-      console.error('API返回的数据格式异常:', result)
-      ElMessage.error('数据格式异常')
+      // 真正的格式异常
+      console.error('ES搜索返回数据格式异常:', esResponse)
+      ElMessage.error('接口响应格式异常')
       patentList.value = []
       total.value = 0
     }
-  } catch (error) {
-    console.error('搜索专利失败:', error)
-    ElMessage.error('搜索专利失败')
+  } catch (error: any) {
+    console.error('搜索专利失败，详细错误信息:')
+    console.error('错误对象:', error)
+    console.error('响应状态:', error.response?.status)
+    console.error('响应数据:', error.response?.data)
+    ElMessage.error(error.message || '搜索专利失败')
+    patentList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -248,7 +284,7 @@ const searchPatents = async () => {
 // 重置搜索
 const resetSearch = () => {
   searchForm.category = ''
-  searchForm.query = ''
+  searchForm.smartQuery = ''
   patentList.value = []
   total.value = 0
 }
@@ -342,22 +378,28 @@ onMounted(() => {
   border-bottom: 1px solid #e4e7ed;
 }
 
-.patent-list {
+.patent-list-container {
   padding: 20px;
-  height: calc(100% - 120px);
-  overflow: auto;
   width: 100%;
   box-sizing: border-box;
+  position: relative;
+  min-height: 400px;
+}
+
+.patent-table-wrapper {
+  max-height: calc(100vh - 300px);
+  overflow: auto;
+  margin-bottom: 20px;
 }
 
 /* 优化表格自适应样式 */
-.patent-list .el-table {
+.patent-table-wrapper .el-table {
   width: 100% !important;
   /* 移除固定最小宽度，让表格完全自适应 */
 }
 
-.patent-list .el-table__header-wrapper,
-.patent-list .el-table__body-wrapper {
+.patent-table-wrapper .el-table__header-wrapper,
+.patent-table-wrapper .el-table__body-wrapper {
   width: 100%;
   overflow-x: auto;
 }

@@ -143,7 +143,7 @@
           <el-table 
             :data="sortedRequirements" 
             style="width: 100%"
-            :default-sort="{ prop: 'createdDate', order: sortOrder === 'asc' ? 'ascending' : 'descending' }"
+            :default-sort="{ prop: 'id', order: sortOrder === 'asc' ? 'ascending' : 'descending' }"
           >
             <el-table-column prop="id" label="ID" width="80" />
             <el-table-column prop="title" label="标题" show-overflow-tooltip />
@@ -157,14 +157,19 @@
               </template>
             </el-table-column>
             <el-table-column prop="createdDate" label="发布时间" width="150" sortable />
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" width="250">
               <template #default="{ row }">
-                <el-button size="small" type="primary" @click="viewMyRequirementDetail(row)">
-                  查看详情
-                </el-button>
-                <el-button size="small" type="danger" @click="deleteMyRequirement(row)">
-                  删除
-                </el-button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <el-button size="small" type="primary" @click="viewMyRequirementDetail(row)">
+                    查看详情
+                  </el-button>
+                  <el-button size="small" type="success" @click="startMatching(row)">
+                    智能匹配
+                  </el-button>
+                  <el-button size="small" type="danger" @click="deleteMyRequirement(row)">
+                    删除
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -199,6 +204,39 @@
       </el-descriptions>
       <template #footer>
         <el-button @click="closeMyRequirementDetail">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 智能匹配结果对话框 -->
+    <el-dialog 
+      v-model="matchingDialogVisible" 
+      :title="`需求匹配结果 - ${currentMyRequirement.title}`" 
+      width="80%" 
+      :before-close="closeMatchingDialog"
+    >
+      <div class="match-content">
+        <el-table :data="matchedPatents" v-loading="patentLoading" style="width: 100%">
+          <el-table-column prop="patentSource" label="专利来源" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.patentSource === 'EXTERNAL' ? 'success' : 'primary'">
+                {{ row.patentSource === 'EXTERNAL' ? '外部专利' : '用户专利' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="category" label="专利类别" width="100" />
+          <el-table-column prop="publicNum" label="公开号" width="150" />
+          <el-table-column prop="title" label="标题" show-overflow-tooltip />
+          <el-table-column prop="applicant" label="申请人" width="150" show-overflow-tooltip />
+          <el-table-column prop="inventor" label="发明人" width="120" show-overflow-tooltip />
+        </el-table>
+        
+        <div v-if="matchedPatents.length === 0 && !patentLoading" class="empty-container" style="text-align: center; padding: 40px;">
+          <el-empty description="未找到匹配的专利" />
+        </div>
+      </div>
+      
+      <template #footer>
+        <el-button @click="closeMatchingDialog">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -238,6 +276,11 @@ const myRequirementDetailVisible = ref(false)
 const myRequirementDialogTitle = ref('')
 const currentMyRequirement = ref<Requirement>({} as Requirement)
 
+// 智能匹配相关变量
+const matchingDialogVisible = ref(false)
+const matchedPatents = ref<any[]>([])
+const patentLoading = ref(false)
+
 // 安全渲染的计算属性
 const sanitizedDescription = computed(() => {
   return DOMPurify.sanitize(demandForm.description || '')
@@ -252,9 +295,7 @@ const sanitizedMyRequirementDescription = computed(() => {
 const sortedRequirements = computed(() => {
   const requirements = [...myRequirements.value]
   return requirements.sort((a, b) => {
-    const dateA = new Date(a.createdDate).getTime()
-    const dateB = new Date(b.createdDate).getTime()
-    return sortOrder.value === 'asc' ? dateA - dateB : dateB - dateA
+    return sortOrder.value === 'asc' ? a.id - b.id : b.id - a.id
   })
 })
 
@@ -307,8 +348,13 @@ const loadMyRequirements = async () => {
   
   myRequirementsLoading.value = true
   try {
-    const response = await requirementApi.getMyRequirements()
-    myRequirements.value = response || []
+    const response = await requirementApi.getRequirements({ 
+      mine: true,
+      page: 0,
+      size: 100 
+    })
+    // 按照ID从小到大排列需求列表
+    myRequirements.value = (response?.content || []).sort((a, b) => a.id - b.id)
   } catch (error: any) {
     console.error('获取我的需求失败:', error)
     ElMessage.error(error.message || '获取需求列表失败')
@@ -367,6 +413,41 @@ const deleteMyRequirement = async (requirement: Requirement) => {
   }
 }
 
+// 开始智能匹配
+const startMatching = async (requirement: Requirement) => {
+  try {
+    currentMyRequirement.value = requirement
+    await loadMatchResults(requirement.id)
+    matchingDialogVisible.value = true
+  } catch (error: any) {
+    console.error('开始匹配失败:', error)
+    ElMessage.error(error.message || '开始匹配失败')
+  }
+}
+
+// 加载匹配结果
+const loadMatchResults = async (requirementId: number) => {
+  patentLoading.value = true
+  try {
+    const response = await requirementApi.matchPatentsForRequirement(requirementId)
+    matchedPatents.value = response || []
+    console.log('匹配结果:', matchedPatents.value)
+  } catch (error: any) {
+    console.error('获取匹配结果失败:', error)
+    ElMessage.error(error.message || '获取匹配结果失败')
+    matchedPatents.value = []
+  } finally {
+    patentLoading.value = false
+  }
+}
+
+// 关闭匹配对话框
+const closeMatchingDialog = () => {
+  matchingDialogVisible.value = false
+  matchedPatents.value = []
+  currentMyRequirement.value = {} as Requirement
+}
+
 // 获取状态文本
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
@@ -396,16 +477,16 @@ const demandRules = {
     { min: 5, max: 100, message: '标题长度应在5-100个字符之间', trigger: 'blur' }
   ],
   techDirection: [
-    { required: true, message: '请选择技术方向', trigger: 'change' }
+    { required: false, message: '请选择技术方向', trigger: 'change' }
   ],
   cooperationMode: [
-    { required: true, message: '请选择合作模式', trigger: 'change' }
+    { required: false, message: '请选择合作模式', trigger: 'change' }
   ],
   keywords: [
-    { required: true, message: '请输入关键词', trigger: 'blur' }
+    { required: false, message: '请输入关键词', trigger: 'blur' }
   ],
   description: [
-    { required: true, message: '请输入需求详情', trigger: 'blur' }
+    { required: false, message: '请输入需求详情', trigger: 'blur' }
   ]
 }
 
@@ -427,11 +508,7 @@ const submitDemand = async () => {
       description: demandForm.description || undefined,
       keywords: demandForm.keywords || undefined,
       techDirection: demandForm.techDirection || undefined,
-      cooperationMode: demandForm.cooperationMode || undefined,
-      // 尝试获取用户机构ID
-      requesterOrgId: currentUserInfo.value?.primaryOrganization?.id || 
-                     currentUserInfo.value?.organizationId || 
-                     undefined
+      cooperationMode: demandForm.cooperationMode || undefined
     }
     
     // 调用后端接口发布需求
@@ -439,6 +516,9 @@ const submitDemand = async () => {
     
     ElMessage.success('需求发布成功！')
     resetForm()
+    
+    // 刷新我的需求列表
+    loadMyRequirements()
   } catch (error: any) {
     if (error.message === 'error fields') {
       // 验证错误，已在验证器中提示

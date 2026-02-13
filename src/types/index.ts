@@ -44,16 +44,20 @@ export type BaseApiResponse<T = any> = ApiResponse<T>
 
 // AI聊天相关类型
 export interface AiChatRequest {
-  question: string                    // 问题
-  sessionId?: number                 // 会话ID（可选，用于继续对话）
+  question: string                    // 问题内容
+  model?: string                     // 模型（默认 qwen-plus）
+  temperature?: number               // 随机性
+  maxTokens?: number                 // 最大输出
 }
 
 export interface AiChatResponse {
-  answer: string                     // AI回答
-  model: string                      // 使用的模型
-  requestId: string                  // 请求ID
-  sessionId: number                  // 会话ID
-  messageId: number                  // 消息ID
+  code: number                       // 响应码
+  message: string                    // 响应消息
+  data: {
+    answer: string                   // AI回答
+    model: string                    // 使用的模型
+    requestId: string                // 请求ID
+  }
 }
 
 // 聊天会话类型（对应后端ChatSession实体）
@@ -175,10 +179,12 @@ export interface Requirement {
   title: string
   description?: string
   keywords?: string
-  techDirection?: string
-  cooperationMode?: string
+  techDirection?: string   // 技术方向
+  cooperationMode?: string   // 合作模式
   status: string
   createdDate: string
+  createdBy?: string        // 创建者
+  updatedDate?: string      // 更新时间
 }
 
 // 创建需求参数
@@ -186,9 +192,8 @@ export interface CreateRequirementParams {
   title: string
   description?: string
   keywords?: string
-  techDirection?: string   //技术方向
-  cooperationMode?: string   //合作模式
-  requesterOrgId?: number   //需求方ID
+  techDirection?: string   // 技术方向
+  cooperationMode?: string   // 合作模式
 }
 
 // 个人专利信息类型

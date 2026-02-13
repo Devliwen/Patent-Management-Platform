@@ -728,7 +728,7 @@ const sendMessage = async () => {
     // 构建AI聊天请求数据
     const requestData: AiChatRequest = {
       question: userInput,
-      sessionId: currentChat.value!.backendId
+      model: 'deepseek3.2'
     }
     
     // 调用后端AI聊天接口
@@ -737,9 +737,8 @@ const sendMessage = async () => {
     const aiMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
-      content: response.answer,
-      timestamp: Date.now(),
-      backendId: response.messageId
+      content: response.data.answer,
+      timestamp: Date.now()
     }
     
     currentChat.value!.messages.push(aiMessage)
