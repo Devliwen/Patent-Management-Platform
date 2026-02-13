@@ -28,7 +28,7 @@ public class SecurityConfig {
         http.httpBasic(basic -> basic.disable());
 
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/error").permitAll()
+                .requestMatchers("/api", "/api/", "/api/auth/**", "/error").permitAll()
                 .requestMatchers("/api/ai/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/patents/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/experts/**").permitAll()
@@ -48,7 +48,7 @@ public class SecurityConfig {
         http.httpBasic(basic -> basic.disable());
         
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/error").permitAll()
+                .requestMatchers("/api", "/api/", "/api/auth/**", "/error").permitAll()
                 .requestMatchers("/api/ai/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/patents/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/experts/**").permitAll()

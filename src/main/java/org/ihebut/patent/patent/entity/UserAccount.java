@@ -28,7 +28,7 @@ public class UserAccount {
     @Column(nullable = false, length = 32)
     private String status = "ACTIVE";
 
-    @Column(name = "user_type", nullable = false, length = 32)
+    @Transient
     private String userType = "PERSONAL";
 
     @Column(name = "created_at", nullable = false)
