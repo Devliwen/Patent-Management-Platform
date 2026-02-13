@@ -57,7 +57,6 @@
                     <el-icon><Document /></el-icon>
                     <span>专利查询</span>
                   </el-menu-item>
-                  
                   <el-menu-item index="demand">
                     <el-icon><Message /></el-icon>
                     <span>需求发布</span>
@@ -70,6 +69,10 @@
                     <el-icon><Document /></el-icon>
                     <span>我的专利</span>
                   </el-menu-item>
+                  <el-menu-item index="requirement">
+                    <el-icon><Message /></el-icon>
+                    <span>需求管理</span>
+                  </el-menu-item>
                   <el-menu-item index="expert">
                     <el-icon><UserFilled /></el-icon>
                     <span>专家对接</span>
@@ -77,10 +80,6 @@
                   <el-menu-item index="expert">
                     <el-icon><User /></el-icon>
                     <span>专家管理</span>
-                  </el-menu-item>
-                  <el-menu-item index="requirement">
-                    <el-icon><Message /></el-icon>
-                    <span>需求管理</span>
                   </el-menu-item>
                   <el-menu-item index="transformation">
                     <el-icon><TrendCharts /></el-icon>

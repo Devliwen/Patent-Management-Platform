@@ -157,7 +157,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { requirementApi, patentApi, expertApi } from '@/api'
-import type { Requirement, CreateRequirementParams, MatchedPatent, MatchedExpert } from '@/types'
+import type { Requirement, CreateRequirementParams, MatchedPatent, MatchedExpert, PatentCategory } from '@/types'
 
 const router = useRouter()
 
@@ -281,17 +281,30 @@ const viewRequirement = async (row: Requirement) => {
 const startMatching = async (row: Requirement) => {
   currentRequirement.value = row
   activeTab.value = 'patents'
-  await loadMatchResults(row.id)
+  await loadMatchResults(row)
   matchingDialogVisible.value = true
 }
 
 // 加载匹配结果
-const loadMatchResults = async (requirementId: number) => {
-  // 加载专利匹配结果
+const loadMatchResults = async (requirement: Requirement) => {
+  // 加载专利匹配结果（使用新的AI接口）
   patentLoading.value = true
   try {
-    const patents = await requirementApi.matchPatentsForRequirement(requirementId)
-    matchedPatents.value = patents
+    const response = await requirementApi.aiMatchPatents({
+      requirement: requirement.title + (requirement.description ? ' ' + requirement.description : ''),
+      sessionId: `session_${requirement.id}`
+    })
+    
+    // 转换数据结构，适配前端显示（使用正确的字段名）
+    matchedPatents.value = response.patents.map((patent: any) => ({
+      category: patent.category,
+      publicNum: patent.public_num, // 注意：后端返回的是 public_num
+      title: patent.title,
+      applicant: patent.applicant || '', // 后端返回了申请人信息
+      inventor: patent.inventor || ''   // 后端返回了发明人信息
+    }))
+    
+    console.log('AI匹配结果:', response)
   } catch (error: any) {
     ElMessage.error(error.message || '获取专利匹配结果失败')
   } finally {
@@ -301,7 +314,7 @@ const loadMatchResults = async (requirementId: number) => {
   // 加载专家匹配结果
   expertLoading.value = true
   try {
-    const experts = await requirementApi.matchExpertsForRequirement(requirementId)
+    const experts = await requirementApi.matchExpertsForRequirement(requirement.id)
     matchedExperts.value = experts
   } catch (error: any) {
     ElMessage.error(error.message || '获取专家匹配结果失败')

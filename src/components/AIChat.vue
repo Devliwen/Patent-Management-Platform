@@ -203,7 +203,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Edit, Menu, Loading, ArrowDown } from '@element-plus/icons-vue'
 import { aiApi, authApi } from '@/api'
 import router from '@/router'
-import type { AiChatRequest, AiChatResponse, ChatSession, ChatMessage, UISession, UIMessage, ChatSessionResponse, ChatMessageResponse } from '@/types'
+import type { AiChatRequest, AiChatResponse, AiChatResponseData, ChatSession, ChatMessage, UISession, UIMessage, ChatSessionResponse, ChatMessageResponse } from '@/types'
 
 // 使用前端简化类型定义
 interface Message extends UIMessage {}
@@ -728,16 +728,32 @@ const sendMessage = async () => {
     // 构建AI聊天请求数据
     const requestData: AiChatRequest = {
       question: userInput,
-      model: 'deepseek3.2'
+      model: 'deepseek-v3.2'
     }
     
     // 调用后端AI聊天接口
     const response = await aiApi.chat(requestData)
     
+    // 调试：检查AI接口返回的数据结构
+    console.log('AI聊天接口返回数据:', response)
+    
+    // 安全地获取AI回答内容
+    let aiAnswer = '抱歉，AI暂时无法回答这个问题。'
+    
+    // 注意：由于API拦截器返回的是response.data，所以response已经是data部分
+    if (response && response.answer) {
+      aiAnswer = response.answer
+    } else if (response && typeof response === 'string') {
+      // 如果直接返回字符串
+      aiAnswer = response
+    } else {
+      console.warn('AI接口返回的数据结构异常:', response)
+    }
+    
     const aiMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
-      content: response.data.answer,
+      content: aiAnswer,
       timestamp: Date.now()
     }
     

@@ -60,6 +60,13 @@ export interface AiChatResponse {
   }
 }
 
+// API拦截器处理后的AI聊天响应类型（返回的是data部分）
+export interface AiChatResponseData {
+  answer: string                   // AI回答
+  model: string                    // 使用的模型
+  requestId: string                // 请求ID
+}
+
 // 聊天会话类型（对应后端ChatSession实体）
 export interface ChatSession {
   id: number                         // 会话ID
@@ -255,6 +262,20 @@ export interface MatchedPatent {
   title: string
   applicant: string
   inventor: string
+}
+
+// AI智能匹配专利响应类型
+export interface AIMatchedPatentResponse {
+  requestId: string
+  aiAnalysis: string
+  extractedPublicNums: string[]
+  notFoundPublicNums: string[]
+  patents: Array<{
+    category: PatentCategory
+    publicNum: string
+    title: string
+    abstractText?: string
+  }>
 }
 
 // 匹配专家结果类型
