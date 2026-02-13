@@ -12,5 +12,7 @@ public interface RequirementPatentMatchMapper extends JpaRepository<RequirementP
     Optional<RequirementPatentMatch> findByRequirementIdAndPatentSourceAndPatentCategoryAndPatentPublicNum(
             Long requirementId, String patentSource, String patentCategory, String patentPublicNum
     );
+
+    void deleteByRequirementId(Long requirementId);
 }
 

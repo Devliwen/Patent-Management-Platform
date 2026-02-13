@@ -194,6 +194,50 @@ public class RequirementController {
         return ApiResponse.ok();
     }
 
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        long userId = currentUser.requireUserId();
+        Requirement req = requirementMapper.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "需求不存在"));
+        
+        if (!req.getRequesterUserId().equals(userId)) {
+            throw new ResponseStatusException(BAD_REQUEST, "无权删除此需求");
+        }
+        
+        requirementPatentMatchMapper.deleteByRequirementId(id);
+        requirementExpertMatchMapper.deleteByRequirementId(id);
+        requirementMapper.deleteById(id);
+        renumberRequirements();
+        return ApiResponse.ok();
+    }
+
+    private void renumberRequirements() {
+        List<Requirement> allRequirements = requirementMapper.findAllByOrderByIdAsc();
+        for (int i = 0; i < allRequirements.size(); i++) {
+            Requirement req = allRequirements.get(i);
+            Long newId = (long) (i + 1);
+            if (!req.getId().equals(newId)) {
+                Long oldId = req.getId();
+                
+                List<RequirementPatentMatch> patentMatches = requirementPatentMatchMapper.findByRequirementId(oldId);
+                for (RequirementPatentMatch match : patentMatches) {
+                    match.setRequirementId(newId);
+                    requirementPatentMatchMapper.save(match);
+                }
+                
+                List<RequirementExpertMatch> expertMatches = requirementExpertMatchMapper.findByRequirementId(oldId);
+                for (RequirementExpertMatch match : expertMatches) {
+                    match.setRequirementId(newId);
+                    requirementExpertMatchMapper.save(match);
+                }
+                
+                req.setId(newId);
+                requirementMapper.save(req);
+            }
+        }
+    }
+
     private List<PatentMatchResult> toExternal(String category, List<?> patents) {
         List<PatentMatchResult> items = new ArrayList<>();
         for (Object p : patents) {

@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface RequirementExpertMatchMapper extends JpaRepository<RequirementExpertMatch, Long> {
     List<RequirementExpertMatch> findByRequirementId(Long requirementId);
+
+    void deleteByRequirementId(Long requirementId);
 }
 

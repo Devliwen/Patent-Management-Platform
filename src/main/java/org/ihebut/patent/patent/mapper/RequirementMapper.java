@@ -51,4 +51,11 @@ public interface RequirementMapper extends JpaRepository<Requirement, Long> {
             "(:query IS NULL OR r.title LIKE %:query% OR r.keywords LIKE %:query%) " +
             "ORDER BY r.createdDate DESC")
     Page<Requirement> search(@Param("techDirection") String techDirection, @Param("query") String query, Pageable pageable);
+
+    /**
+     * 查询所有需求并按ID升序排列。
+     *
+     * @return 需求列表
+     */
+    List<Requirement> findAllByOrderByIdAsc();
 }
