@@ -10,6 +10,7 @@ declare module '*.vue' {
 interface ImportMetaEnv {
   readonly VITE_APP_TITLE: string
   readonly VITE_API_BASE_URL: string
+  readonly VITE_AI_MODEL?: string
   // 在这里添加其他环境变量
 }
 
