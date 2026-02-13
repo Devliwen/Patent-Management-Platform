@@ -216,18 +216,10 @@
     >
       <div class="match-content">
         <el-table :data="matchedPatents" v-loading="patentLoading" style="width: 100%">
-          <el-table-column prop="patentSource" label="专利来源" width="120">
-            <template #default="{ row }">
-              <el-tag :type="row.patentSource === 'EXTERNAL' ? 'success' : 'primary'">
-                {{ row.patentSource === 'EXTERNAL' ? '外部专利' : '用户专利' }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column prop="category" label="专利类别" width="100" />
           <el-table-column prop="publicNum" label="公开号" width="150" />
           <el-table-column prop="title" label="标题" show-overflow-tooltip />
-          <el-table-column prop="applicant" label="申请人" width="150" show-overflow-tooltip />
-          <el-table-column prop="inventor" label="发明人" width="120" show-overflow-tooltip />
+          <el-table-column prop="abstractText" label="摘要" show-overflow-tooltip />
         </el-table>
         
         <div v-if="matchedPatents.length === 0 && !patentLoading" class="empty-container" style="text-align: center; padding: 40px;">
@@ -417,7 +409,7 @@ const deleteMyRequirement = async (requirement: Requirement) => {
 const startMatching = async (requirement: Requirement) => {
   try {
     currentMyRequirement.value = requirement
-    await loadMatchResults(requirement.id)
+    await loadMatchResults(requirement)
     matchingDialogVisible.value = true
   } catch (error: any) {
     console.error('开始匹配失败:', error)
@@ -426,12 +418,41 @@ const startMatching = async (requirement: Requirement) => {
 }
 
 // 加载匹配结果
-const loadMatchResults = async (requirementId: number) => {
+const loadMatchResults = async (requirement: Requirement) => {
   patentLoading.value = true
   try {
-    const response = await requirementApi.matchPatentsForRequirement(requirementId)
-    matchedPatents.value = response || []
-    console.log('匹配结果:', matchedPatents.value)
+    // 使用新的AI智能匹配接口
+    const response = await requirementApi.aiMatchPatents({
+      requirement: requirement.title + (requirement.description ? ' ' + requirement.description : ''),
+      sessionId: `session_${requirement.id}`
+    })
+    
+    // 调试：检查AI接口返回的数据结构
+    console.log('=== AI接口返回数据详细分析 ===')
+    console.log('完整的response对象:', response)
+    console.log('response.patents类型:', typeof response.patents)
+    console.log('response.patents长度:', response.patents?.length)
+    
+    if (response.patents && response.patents.length > 0) {
+      const firstPatent = response.patents[0]
+      console.log('第一个专利对象的完整结构:', firstPatent)
+      console.log('第一个专利对象的字段列表:', Object.keys(firstPatent))
+      console.log('publicNum字段值:', firstPatent.publicNum)
+      console.log('abstractText字段值:', firstPatent.abstractText)
+      console.log('category字段值:', firstPatent.category)
+      console.log('title字段值:', firstPatent.title)
+    }
+    
+    // 转换数据结构，适配前端显示（使用正确的字段名）
+    matchedPatents.value = response.patents.map(patent => ({
+      category: patent.category || '未知',
+      publicNum: patent.public_num || '无公开号', // 注意：后端返回的是 public_num
+      title: patent.title || '无标题',
+      abstractText: patent.abstract || '无摘要信息' // 注意：后端返回的是 abstract
+    }))
+    
+    console.log('转换后的专利列表:', matchedPatents.value)
+    console.log('转换后第一个专利的字段:', matchedPatents.value[0])
   } catch (error: any) {
     console.error('获取匹配结果失败:', error)
     ElMessage.error(error.message || '获取匹配结果失败')

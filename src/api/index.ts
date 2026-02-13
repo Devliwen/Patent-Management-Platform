@@ -6,7 +6,7 @@ import axios, {
 } from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '../router'
-import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, CreateUserPatentParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserPatentParams, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserPatentQueryParams, UserProfile, ValuationReport, AiChatRequest, AiChatResponse, ChatSession, ChatMessage, ChatCreateSessionRequest, ChatSessionResponse, ChatMessageResponse } from '../types'
+import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, CreateUserPatentParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserPatentParams, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserPatentQueryParams, UserProfile, ValuationReport, AiChatRequest, AiChatResponse, AiChatResponseData, ChatSession, ChatMessage, ChatCreateSessionRequest, ChatSessionResponse, ChatMessageResponse } from '../types'
 
 // 取消请求token缓存
 const cancelTokenMap = new Map<string, CancelTokenSource>()
@@ -125,6 +125,19 @@ class ApiService {
           const newConfig = { ...config }
           newConfig.timeout = 60000 // 60秒
           console.log('AI聊天接口超时设置:', { 
+            url: config.url, 
+            timeout: newConfig.timeout,
+            originalTimeout: config.timeout 
+          })
+          return newConfig
+        }
+        
+        // 为需求匹配专利接口设置更长的超时时间（60秒）
+        if (config.url?.includes('/requirements/') && config.url?.includes('/match-patents')) {
+          // 创建新的配置对象，避免被全局配置覆盖
+          const newConfig = { ...config }
+          newConfig.timeout = 60000 // 60秒
+          console.log('需求匹配专利接口超时设置:', { 
             url: config.url, 
             timeout: newConfig.timeout,
             originalTimeout: config.timeout 
@@ -358,9 +371,20 @@ class ApiService {
     return this.delete(`/requirements/${requirementId}`)
   }
 
-  // 需求匹配专利
+  // 需求匹配专利（旧接口）
   matchPatentsForRequirement(requirementId: number) {
     return this.get<MatchedPatent[]>(`/requirements/${requirementId}/match-patents`)
+  }
+
+  // AI智能匹配专利（新接口）
+  aiMatchPatents(params: { requirement: string; sessionId?: string }) {
+    return this.post<{
+      requestId: string;
+      aiAnalysis: string;
+      extractedPublicNums: string[];
+      notFoundPublicNums: string[];
+      patents: any[];
+    }>('/ai/chat/patent', params)
   }
 
   // 需求匹配专家
@@ -573,6 +597,11 @@ export const requirementApi = {
     return api.matchPatentsForRequirement(requirementId)
   },
 
+  // AI智能匹配专利
+  aiMatchPatents: (params: { requirement: string; sessionId?: string }) => {
+    return api.aiMatchPatents(params)
+  },
+
   // 需求匹配专家
   matchExpertsForRequirement: (requirementId: number) => {
     return api.matchExpertsForRequirement(requirementId)
@@ -637,7 +666,7 @@ export const profileApi = {
 export const aiApi = {
   // AI聊天咨询
   chat: (requestData: AiChatRequest) => {
-    return api.post<AiChatResponse>('/ai/chat', requestData)
+    return api.post<AiChatResponseData>('/ai/chat', requestData)
   },
   
   // 获取用户的所有聊天会话（支持分页）
