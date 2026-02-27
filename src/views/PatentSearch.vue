@@ -258,7 +258,7 @@ const searchPatents = async () => {
     } else if (esResponse && (esResponse as any).code !== undefined) {
       // 后端返回了错误码
       console.error('ES搜索返回错误:', esResponse)
-      ElMessage.error(`搜索失败: ${esResponse.message || '未知错误'}`)
+      ElMessage.error(`搜索失败: ${(esResponse as any).message || '未知错误'}`)
       patentList.value = []
       total.value = 0
     } else {

@@ -4,7 +4,7 @@ import axios, {
   CancelTokenSource,
   isCancel
 } from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { Message, Modal } from '@arco-design/web-vue'
 import router from '../router'
 import type { ApiResponse, CreateRequirementParams, CreateTransformationParams, CreateUserPatentParams, Expert, ExpertQueryParams, FullUserInfo, GenerateValuationParams, MatchedExpert, MatchedPatent, Pageable, PatentBase, PatentCategory, PatentQueryParams, PersistExpertMatchParams, PersistPatentMatchParams, QueryValuationParams, RequestConfig, Requirement, TransformationResult, UpdateUserPatentParams, UpdateUserProfileParams, UpdateValuationParam, UserPatent, UserPatentQueryParams, UserProfile, ValuationReport, AiChatRequest, AiChatResponse, AiChatResponseData, ChatSession, ChatMessage, ChatCreateSessionRequest, ChatSessionResponse, ChatMessageResponse } from '../types'
 
@@ -13,15 +13,14 @@ const cancelTokenMap = new Map<string, CancelTokenSource>()
 // 请求缓存
 const requestCache = new Map<string, any>()
 // 环境变量中的接口地址
-const BASE_URL = import.meta.env.VITE_API_BASE_URL
+const BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '/api').replace(/['"]/g, '').trim().replace(/\/+$/, '')
 
 // 响应数据类型已从 ../types 导入
 
 // 免token接口白名单
 const NO_TOKEN_WHITELIST = [
-  '/api/auth/login',
-  '/api/auth/register',
-  '/api/auth/captcha'
+  '/auth/login',
+  '/auth/register'
 ]
 
 // 检查token是否即将过期（在过期前5分钟提醒）
@@ -90,7 +89,7 @@ class ApiService {
   constructor() {
     this.axiosInstance = axios.create({
       baseURL: BASE_URL,
-      timeout: 10000,
+      timeout: 100000,
       headers: {
         'Content-Type': 'application/json'
       }
@@ -124,11 +123,6 @@ class ApiService {
           // 创建新的配置对象，避免被全局配置覆盖
           const newConfig = { ...config }
           newConfig.timeout = 60000 // 60秒
-          console.log('AI聊天接口超时设置:', { 
-            url: config.url, 
-            timeout: newConfig.timeout,
-            originalTimeout: config.timeout 
-          })
           return newConfig
         }
         
@@ -137,11 +131,6 @@ class ApiService {
           // 创建新的配置对象，避免被全局配置覆盖
           const newConfig = { ...config }
           newConfig.timeout = 60000 // 60秒
-          console.log('需求匹配专利接口超时设置:', { 
-            url: config.url, 
-            timeout: newConfig.timeout,
-            originalTimeout: config.timeout 
-          })
           return newConfig
         }
         
@@ -161,34 +150,20 @@ class ApiService {
               // token已过期，清除token并提示重新登录
               localStorage.removeItem('token')
               if (router.currentRoute.value.path !== '/login') {
-                ElMessage.warning('登录已过期，请重新登录')
+                Message.warning('登录已过期，请重新登录')
                 router.push('/login')
               }
               return Promise.reject(new Error('Token已过期'))
             } else if (tokenState.isExpiringSoon && 
                       (lastTokenState.token !== token || !lastTokenState.isExpiringSoon)) {
               // token即将过期，且状态发生变化时才提示
-              ElMessage.info('登录状态即将过期，建议保存当前工作后重新登录')
+              Message.info('登录状态即将过期，建议保存当前工作后重新登录')
             }
             
             typedConfig.headers.Authorization = `Bearer ${token}`
-            
-            // 调试信息：打印请求头和token信息
-            console.log('请求拦截器 - 添加Authorization头:', {
-              url: config.url,
-              method: config.method,
-              authorizationHeader: `Bearer ${token}`,
-              tokenLength: token.length,
-              tokenPrefix: token.substring(0, 20) + '...',
-              isJWT: token.split('.').length === 3
-            })
           } else {
             // token无效时，清除并提示
             localStorage.removeItem('token')
-            console.warn('token无效，已清除:', {
-              tokenType: typeof token,
-              tokenValue: token
-            })
           }
         return config
       },
@@ -211,27 +186,25 @@ class ApiService {
           if (res.code === 401) {
             // 只在用户当前页面需要登录时才提示
             if (router.currentRoute.value.path !== '/login') {
-              ElMessageBox.confirm(
-                '登录状态已失效，请重新登录',
-                '提示',
-                {
-                  confirmButtonText: '重新登录',
-                  cancelButtonText: '取消',
-                  type: 'warning'
+              Modal.confirm({
+                title: '提示',
+                content: '登录状态已失效，请重新登录',
+                okText: '重新登录',
+                cancelText: '取消',
+                onOk: () => {
+                  localStorage.removeItem('token')
+                  router.push('/login')
                 }
-              ).then(() => {
-                localStorage.removeItem('token')
-                router.push('/login')
               })
             }
             return Promise.reject(new Error('登录状态失效'))
           }
           // 业务逻辑层面的403错误
           if (res.code === 403) {
-            ElMessage.error('无权限执行此操作')
+            Message.error('无权限执行此操作')
             return Promise.reject(new Error('无权限执行此操作'))
           }
-          ElMessage.error(res.message || '请求失败')
+          Message.error(res.message || '请求失败')
           return Promise.reject(new Error(res.message || '请求失败'))
         }
         // 缓存请求结果（如果配置了缓存）
@@ -254,13 +227,12 @@ class ApiService {
         // HTTP状态码错误处理
         if (error.response?.status === 500) {
           // 500错误：服务器内部错误，直接拒绝，不重试
-          console.error('服务器内部错误 (500):', error)
-          ElMessage.error('服务器内部错误，请稍后重试')
+          Message.error('服务器内部错误，请稍后重试')
           return Promise.reject(error)
         } else if (error.response?.status === 403) {
           // 403错误：无权限访问
           if (router.currentRoute.value.path !== '/login') {
-            ElMessage.error('无权限访问，请确认登录状态')
+            Message.error('无权限访问，请确认登录状态')
             localStorage.removeItem('token')
             router.push('/login')
           }
@@ -268,7 +240,7 @@ class ApiService {
         } else if (error.response?.status === 401) {
           // 401错误：登录已过期
           if (router.currentRoute.value.path !== '/login') {
-            ElMessage.error('登录已过期，请重新登录')
+            Message.error('登录已过期，请重新登录')
             localStorage.removeItem('token')
             router.push('/login')
           }
@@ -276,8 +248,7 @@ class ApiService {
         }
 
         // 通用网络错误提示（其他错误也不重试）
-        console.error('网络错误:', error)
-        ElMessage.error('网络异常，请检查网络连接')
+        Message.error('网络异常，请检查网络连接')
         return Promise.reject(error)
       }
     )
@@ -455,14 +426,7 @@ class ApiService {
     page?: number; 
     size?: number; 
   }) {
-    return this.get<{
-      code: number;
-      message: string;
-      data: {
-        total: number;
-        hits: PatentBase[];
-      }
-    }>('/patents/es/search', params)
+    return this.get<{ total: number; hits: PatentBase[] }>('/patents/es/search', params)
   }
 
   // 更新评估模型参数
@@ -477,7 +441,12 @@ class ApiService {
 
   // 更新用户资料
   updateUserProfile(profileData: UpdateUserProfileParams) {
-    return this.put<UserProfile>('/users/me/profile', profileData)
+    const data: any = {}
+    if ((profileData as any).nickname !== undefined) data.nickname = (profileData as any).nickname
+    if ((profileData as any).avatarUrl !== undefined) data.avatarUrl = (profileData as any).avatarUrl
+    if ((profileData as any).realName !== undefined) data.realName = (profileData as any).realName
+    if ((profileData as any).idNumber !== undefined) data.idNumber = (profileData as any).idNumber
+    return this.put<UserProfile>('/users/me/profile', data)
   }
 }
 
@@ -490,27 +459,11 @@ export default api
 export const authApi = {
   // 注册
   register(data: { username: string; password: string; phone?: string; email?: string; nickname?: string }) {
-    console.log('注册请求参数：', data) // 打印参数 
-    console.log('请求URL：', `${import.meta.env.VITE_API_BASE_URL}/auth/register`) // 打印完整URL
-    return api.post<{ userId: number }>('/auth/register', data).catch(err => { 
-      // 打印完整错误信息 
-      console.error('注册接口错误详情：', { 
-        url: err.config?.url, 
-        data: err.config?.data, 
-        status: err.response?.status, 
-        responseData: err.response?.data, // 后端返回的错误提示（关键！） 
-        message: err.message 
-      }) 
-      throw err // 继续抛出错误，不影响原有逻辑 
-    })
+    return api.post<{ userId: number }>('/auth/register', data)
   },
   // 登录
   login(data: { username: string; password: string }) {
     return api.post<string>('/auth/login', data)
-  },
-  // 获取验证码
-  getCaptcha(phone: string) {
-    return api.post<{ captcha: string }>('/auth/captcha', { phone })
   },
   // 获取当前用户信息
   getCurrentUser() {
@@ -528,6 +481,20 @@ export const patentApi = {
     size?: number; 
   }) => {
     return api.searchPatentsByES(params)
+  },
+
+  getPatent: async (patentCategory: string, patentPublicNum: string) => {
+    const data = await api.get<{ total: number; hits: PatentBase[] }>('/patents/es/search', {
+      query: patentPublicNum,
+      category: patentCategory,
+      page: 0,
+      size: 1
+    })
+    const patent = data?.hits?.[0]
+    if (!patent) {
+      throw new Error('未找到该专利')
+    }
+    return patent
   },
 
   // 个人专利管理方法
@@ -671,9 +638,7 @@ export const aiApi = {
   
   // 获取用户的所有聊天会话（支持分页）
   getSessions: (page: number = 1, size: number = 10) => {
-    return api.get<{success: boolean, data: ChatSession[]}>('/chat/sessions', {
-      params: { page, size }
-    })
+    return api.get<ChatSessionResponse[]>('/chat/sessions', { page, size }, { noCache: true })
   },
   
   // 创建新的聊天会话
@@ -691,7 +656,7 @@ export const aiApi = {
   
   // 更新会话标题
   updateSessionTitle: (sessionId: number, title: string) => {
-    return api.put<ApiResponse<ChatSessionResponse>>(`/chat/sessions/${sessionId}/title`, { title })
+    return api.put<ChatSessionResponse>(`/chat/sessions/${sessionId}/title`, { title })
   },
   
   // 获取会话的所有消息

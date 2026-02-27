@@ -394,33 +394,19 @@ export interface UpdateValuationParam {
   description?: string
 }
 
-// 用户账户信息类型
 export interface UserAccount {
   id: number
   username: string
-  email?: string
   phone?: string
-  role: string
-  status: string
-  createdAt: string
-  updatedAt: string
+  email?: string
 }
 
-// 用户资料类型
 export interface UserProfile {
-  id: number
   userId: number
   nickname?: string
-  avatarUrl?: string
-  realName?: string
-  gender?: 'male' | 'female' | 'other'
-  birthDate?: string
-  bio?: string
-  address?: string
-  website?: string
-  socialLinks?: Record<string, string>
-  preferences?: Record<string, any>
-  updatedAt: string
+  avatarUrl?: string | null
+  realName?: string | null
+  idNumber?: string | null
 }
 
 // 专家资料类型
@@ -450,24 +436,18 @@ export interface Organization {
   updatedAt: string
 }
 
-// 完整用户信息类型（匹配后端实际返回的数据结构）
+// 完整用户信息类型
 export interface FullUserInfo {
   user: UserAccount
-  profile?: UserProfile
-  expertProfile?: ExpertProfile
-  primaryOrganization?: Organization
+  profile: UserProfile
+  expertProfile?: ExpertProfile | null
+  primaryOrganization?: Organization | null
 }
 
 // 更新用户资料参数
 export interface UpdateUserProfileParams {
   nickname?: string
-  avatar?: string
-  realName?: string
-  gender?: 'male' | 'female' | 'other'
-  birthDate?: string
-  bio?: string
-  address?: string
-  website?: string
-  socialLinks?: Record<string, string>
-  preferences?: Record<string, any>
+  avatarUrl?: string | null
+  realName?: string | null
+  idNumber?: string | null
 }

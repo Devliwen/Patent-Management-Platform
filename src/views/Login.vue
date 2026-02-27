@@ -6,69 +6,79 @@
         <p class="auth-subtitle">登录您的账号</p>
       </div>
 
-      <el-form
+      <a-form
         ref="loginFormRef"
         :model="loginForm"
         :rules="loginRules"
-        label-position="top"
+        layout="vertical"
         class="login-form"
+        @submit="handleLogin"
       >
-        <el-form-item label="用户名" prop="username">
-          <el-input
+        <a-form-item field="username" label="用户名">
+          <a-input
             v-model="loginForm.username"
             placeholder="请输入用户名(3-20个字符)"
-            prefix-icon="User"
             size="large"
+            allow-clear
             @keyup.enter="handleLogin"
-          />
-        </el-form-item>
+          >
+            <template #prefix>
+              <icon-user />
+            </template>
+          </a-input>
+        </a-form-item>
 
-        <el-form-item label="密码" prop="password">
-          <el-input
+        <a-form-item field="password" label="密码">
+          <a-input-password
             v-model="loginForm.password"
-            type="password"
             placeholder="请输入密码(6-20个字符，建议包含字母+数字)"
-            prefix-icon="Lock"
-            show-password
             size="large"
+            allow-clear
             @keyup.enter="handleLogin"
-          />
-        </el-form-item>
+          >
+            <template #prefix>
+              <icon-lock />
+            </template>
+          </a-input-password>
+        </a-form-item>
 
-        <el-form-item>
-          <el-button
-            type="primary"
-            :loading="loading"
-            @click="handleLogin"
-            size="large"
-            class="login-button"
-          >
-            登录
-          </el-button>
-          <el-button
-            type="default"
-            size="large"
-            class="reset-button"
-            @click="resetForm"
-          >
-            重置
-          </el-button>
-        </el-form-item>
+        <a-form-item>
+          <a-space fill style="width: 100%">
+            <a-button
+              type="primary"
+              :loading="loading"
+              html-type="submit"
+              size="large"
+              class="login-button"
+              long
+            >
+              登录
+            </a-button>
+            <a-button
+              size="large"
+              class="reset-button"
+              @click="resetForm"
+            >
+              重置
+            </a-button>
+          </a-space>
+        </a-form-item>
 
         <div class="login-footer">
-          <el-link type="primary" @click="goToRegister">
+          <a-link @click="goToRegister">
             没有账号？立即注册
-          </el-link>
+          </a-link>
         </div>
-      </el-form>
+      </a-form>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { Message } from '@arco-design/web-vue'
+import { IconUser, IconLock } from '@arco-design/web-vue/es/icon'
 import { authApi } from '../api'
 import type { LoginParams } from '../types/auth'
 
@@ -83,12 +93,12 @@ const loginForm = reactive<LoginParams>({
 })
 
 // 密码强度校验规则
-const validatePasswordStrength = (rule: any, value: string, callback: Function) => {
+const validatePasswordStrength = (value: string, callback: Function) => {
   if (value) {
     const hasLetter = /[a-zA-Z]/.test(value)
     const hasNumber = /\d/.test(value)
     if (!hasLetter || !hasNumber) {
-      callback(new Error('密码需同时包含字母和数字'))
+      callback('密码需同时包含字母和数字')
     } else {
       callback()
     }
@@ -98,26 +108,24 @@ const validatePasswordStrength = (rule: any, value: string, callback: Function) 
 }
 
 // 登录表单验证规则
-const loginRules = reactive({
+const loginRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
+    { minLength: 3, maxLength: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' },
+    { minLength: 6, maxLength: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' },
     { validator: validatePasswordStrength, trigger: 'blur' }
   ]
-})
+}
 
 // 处理登录
 const handleLogin = async () => {
-  if (!loginFormRef.value) return
+  const errors = await loginFormRef.value?.validate()
+  if (errors) return
   
   try {
-    // 表单验证
-    await loginFormRef.value.validate()
-    
     // 设置加载状态
     loading.value = true
     
@@ -138,16 +146,8 @@ const handleLogin = async () => {
     // 保存token到localStorage
     localStorage.setItem('token', token)
     
-    // 调试信息：验证token格式
-    console.log('登录成功，存储的token:', {
-      type: typeof token,
-      length: token.length,
-      prefix: token.substring(0, 20) + '...',
-      isJWT: token.split('.').length === 3
-    })
-    
     // 显示登录成功提示
-    ElMessage.success('登录成功')
+    Message.success('登录成功')
     
     // 跳转到之前的页面（如有）
     const redirect = router.currentRoute.value.query.redirect as string
@@ -155,17 +155,15 @@ const handleLogin = async () => {
   } catch (error: any) {
     // 处理错误
     if (error.message) {
-      ElMessage.error(error.message)
+      Message.error(error.message)
     } else {
-      ElMessage.error('登录失败，请检查用户名和密码')
+      Message.error('登录失败，请检查用户名和密码')
     }
   } finally {
     // 关闭加载状态
     loading.value = false
   }
 }
-
-
 
 // 重置表单
 const resetForm = () => {
@@ -176,48 +174,58 @@ const resetForm = () => {
 const goToRegister = () => {
   router.push('/register')
 }
-
-
 </script>
 
 <style scoped>
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.auth-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  margin-bottom: 8px;
+}
+
+.auth-subtitle {
+  color: var(--color-text-3);
+  font-size: 14px;
+}
+
 .login-form {
   width: 100%;
 }
 
 .login-button {
-  width: 70%;
-  margin-right: 8px;
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
+  flex: 2;
 }
 
 .reset-button {
-  width: calc(30% - 8px);
-}
-
-.login-button:hover {
-  background-color: var(--primary-hover);
-  border-color: var(--primary-hover);
-}
-
-.login-button:active {
-  background-color: var(--primary-active);
-  border-color: var(--primary-active);
+  flex: 1;
 }
 
 .login-footer {
   text-align: center;
-  margin-top: var(--spacing-lg);
-}
-
-.captcha-wrapper {
-  display: flex;
-  gap: 8px;
-}
-
-.captcha-btn {
-  flex-shrink: 0;
-  width: 120px;
+  margin-top: 24px;
 }
 </style>

@@ -56,15 +56,7 @@
               <el-input v-model="editForm.email" :disabled="!isEditing" placeholder="请输入邮箱" />
             </el-form-item>
             
-            <el-form-item label="个人简介" prop="bio">
-              <el-input 
-                v-model="editForm.bio" 
-                :disabled="!isEditing"
-                type="textarea" 
-                :rows="3" 
-                placeholder="请输入个人简介"
-              />
-            </el-form-item>
+
             
             <div class="form-actions" v-if="isEditing">
               <el-button @click="resetForm">重置</el-button>
@@ -93,12 +85,14 @@ const isEditing = ref(false)
 const activeTab = ref('basic')
 
 // 编辑表单
-const editForm = reactive<UpdateUserProfileParams & { 
-  username?: string, 
-  phone?: string,
-  email?: string
-}>({
-  bio: ''
+const editForm = reactive<UpdateUserProfileParams & { username?: string; phone?: string; email?: string }>({
+  nickname: '',
+  avatarUrl: null,
+  realName: null,
+  idNumber: null,
+  username: '',
+  phone: '',
+  email: ''
 })
 
 const editFormRef = ref()
@@ -157,13 +151,21 @@ const loadUserInfo = async () => {
     const data = await profileApi.getCurrentUserInfo()
     userInfo.value = data
     
-    // 初始化编辑表单
-    editForm.bio = data?.profile?.bio || ''
-    
-    // 用户账户信息
-    editForm.username = data?.user?.username || ''
-    editForm.phone = data?.user?.phone || ''
-    editForm.email = data?.user?.email || ''
+    // 填充表单
+      if (data) {
+        // 用户基本信息
+        // 类型断言：虽然 UserAccount 定义中可能没有 nickname，但实际接口可能返回
+        const user = data.user as any
+        editForm.nickname = user?.nickname || data.profile?.nickname || ''
+        editForm.username = data.user?.username || ''
+        editForm.phone = data.user?.phone || ''
+        editForm.email = data.user?.email || ''
+      
+      // 用户档案信息
+      editForm.avatarUrl = data.profile?.avatarUrl || null
+      editForm.realName = data.profile?.realName || ''
+      editForm.idNumber = data.profile?.idNumber || ''
+    }
     
 
   } catch (error: any) {
@@ -190,7 +192,10 @@ const submitForm = async () => {
     
     // 提取需要更新的字段
     const updateData: UpdateUserProfileParams = {
-      bio: editForm.bio
+      nickname: editForm.nickname,
+      avatarUrl: editForm.avatarUrl,
+      realName: editForm.realName,
+      idNumber: editForm.idNumber
     }
     
     // 过滤掉空值

@@ -353,15 +353,18 @@ const loadUserSessions = async (loadMore: boolean = false) => {
     // 简化校验逻辑，直接检查响应是否为数组或包含data数组
     let sessionsData: any[] = []
     
+    // 使用 as any 绕过 TS 检查，因为我们不确定 response 的确切结构（可能是数组，也可能是对象）
+    const res = response as any
+
     if (Array.isArray(response)) {
       // 如果响应本身就是数组
       sessionsData = response
-    } else if (response && Array.isArray(response.data)) {
+    } else if (res && Array.isArray(res.data)) {
       // 如果响应包含data数组
-      sessionsData = response.data
-    } else if (response && response.success && Array.isArray(response.data)) {
+      sessionsData = res.data
+    } else if (res && res.success && Array.isArray(res.data)) {
       // 如果响应包含success和data数组
-      sessionsData = response.data
+      sessionsData = res.data
     }
     
     if (sessionsData.length > 0) {
@@ -594,13 +597,14 @@ const saveChatTitle = async () => {
         console.log('后端响应:', response)
         
         // 判断响应是否成功的多种方式（包括直接返回数据的情况）
-        const isSuccess = (response.data !== null)
+        const res = response as any
+        const isSuccess = (res.data !== null)
         
         if (isSuccess) {
-          console.log('会话重命名成功:', response.data || response)
+          console.log('会话重命名成功:', res.data || res)
           
           // 提取数据（多种格式兼容）
-          const responseData = response.data || response
+          const responseData = res.data || res
           
           // 使用后端返回的更新后数据
           if (responseData && responseData.title) {
@@ -616,7 +620,7 @@ const saveChatTitle = async () => {
           }
         } else {
           // 提取错误信息（多种格式兼容）
-          const errorMessage = response?.message
+          const errorMessage = res?.message
           
           console.error('重命名失败:', errorMessage)
           ElMessage.error(`重命名失败: ${errorMessage}`)
@@ -779,11 +783,12 @@ const sendMessage = async () => {
             // 检查后端响应是否成功（多种格式兼容）
             console.log('自动更新标题后端响应:', response)            
             // 判断响应是否成功的多种方式（包括直接返回数据的情况）
-            const isSuccess = (response.code === 0)
+            const res = response as any
+            const isSuccess = (res.code === 0)
             
             if (isSuccess) {
               // 提取数据（多种格式兼容）
-              const responseData = response.data || response
+              const responseData = res.data || res
               
               if (responseData && responseData.title) {
                 // 使用后端返回的更新后数据
@@ -803,7 +808,7 @@ const sendMessage = async () => {
               currentChat.value!.updatedAt = Date.now()
               
               // 提取错误信息（多种格式兼容）
-              const errorMessage = response?.message || '未知错误'
+              const errorMessage = res?.message || '未知错误'
               console.warn('自动更新标题失败，使用前端标题:', errorMessage)
             }
           } catch (updateError: any) {

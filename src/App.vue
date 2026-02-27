@@ -1,30 +1,35 @@
 <template>
-  <!-- 路由视图 + 全局样式 -->
-  <router-view v-slot="{ Component, route }">
-    <transition 
-      :name="getTransitionName(route)" 
-      mode="out-in"
-      appear
-    >
-      <keep-alive :include="cachedViews">
-        <component 
-          :is="Component" 
-          :key="route.path" 
-          v-if="route.meta.keepAlive !== false"
-        />
-      </keep-alive>
-    </transition>
-  </router-view>
+  <a-config-provider :locale="locale">
+    <!-- 路由视图 + 全局样式 -->
+    <router-view v-slot="{ Component, route }">
+      <transition 
+        :name="getTransitionName(route)" 
+        mode="out-in"
+        appear
+      >
+        <keep-alive :include="cachedViews">
+          <component 
+            :is="Component" 
+            :key="route.path" 
+            v-if="route.meta.keepAlive !== false"
+          />
+        </keep-alive>
+      </transition>
+    </router-view>
 
-  <!-- 全局加载遮罩（可全局调用） -->
-  <div class="global-loading" v-if="isLoading">
-    <div class="loading-spinner"></div>
-  </div>
+    <!-- 全局加载遮罩（可全局调用） -->
+    <div class="global-loading" v-if="isLoading">
+      <div class="loading-spinner"></div>
+    </div>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, type RouteLocationNormalized } from 'vue-router'
+import zhCN from '@arco-design/web-vue/es/locale/lang/zh-cn'
+
+const locale = zhCN
 
 interface AppRouteMeta {
   title?: string

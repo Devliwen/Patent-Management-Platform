@@ -28,7 +28,7 @@ export default defineConfig({
         // 配置接口代理，解决前后端分离跨域问题
         target: 'http://60.205.242.113:8080', // 后端接口地址
         changeOrigin: true,
-        //rewrite: (path) => path
+        rewrite: (path) => path.replace(/^\/api/, '') // 移除 /api 前缀，后端接口没有 /api
       }
     }
   }
