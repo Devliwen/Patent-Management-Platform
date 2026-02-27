@@ -411,7 +411,7 @@ export interface UserProfile {
   id: number
   userId: number
   nickname?: string
-  avatar?: string
+  avatarUrl?: string
   realName?: string
   gender?: 'male' | 'female' | 'other'
   birthDate?: string
@@ -450,12 +450,12 @@ export interface Organization {
   updatedAt: string
 }
 
-// 完整用户信息类型
+// 完整用户信息类型（匹配后端实际返回的数据结构）
 export interface FullUserInfo {
-  userAccount: UserAccount
-  userProfile: UserProfile
+  user: UserAccount
+  profile?: UserProfile
   expertProfile?: ExpertProfile
-  mainOrganization?: Organization
+  primaryOrganization?: Organization
 }
 
 // 更新用户资料参数

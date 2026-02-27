@@ -73,18 +73,27 @@
                     <el-icon><Message /></el-icon>
                     <span>需求管理</span>
                   </el-menu-item>
-                  <el-menu-item index="expert">
-                    <el-icon><UserFilled /></el-icon>
-                    <span>专家对接</span>
-                  </el-menu-item>
-                  <el-menu-item index="expert">
-                    <el-icon><User /></el-icon>
-                    <span>专家管理</span>
-                  </el-menu-item>
-                  <el-menu-item index="transformation">
-                    <el-icon><TrendCharts /></el-icon>
-                    <span>转化成果</span>
-                  </el-menu-item>
+
+                  <!-- 更多功能下拉菜单 -->
+                  <el-sub-menu index="more">
+                    <template #title>
+                      <el-icon><More /></el-icon>
+                      <span>更多功能</span>
+                    </template>
+                    <el-menu-item index="expert">
+                      <el-icon><UserFilled /></el-icon>
+                      <span>专家对接</span>
+                    </el-menu-item>
+                    <el-menu-item index="expert">
+                      <el-icon><User /></el-icon>
+                      <span>专家管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="transformation">
+                      <el-icon><TrendCharts /></el-icon>
+                      <span>转化成果</span>
+                    </el-menu-item>
+                  </el-sub-menu>
+
                 </el-menu>
               </nav>
               
@@ -288,7 +297,7 @@ import AIChat from '../components/AIChat.vue'
 import {
   Cpu, House, Document, UserFilled, DataAnalysis, Star, Lightning, Lock, Service,
   User, EditPen, DocumentChecked, TrendCharts, Phone, Message, Location, 
-  ArrowRight, ArrowDown, Money
+  ArrowRight, ArrowDown, Money, More
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -779,20 +788,28 @@ const logout = () => {
   opacity: 0;
 }
 
-/* 原有样式保留，移除重复定义的部分 */
+/* 导航栏样式 - logo紧贴左侧 */
 .home-header {
-  background-color: var(--bg-primary);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(64, 158, 255, 0.08);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+}
+
+.home-header .container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 64px;
+  height: 80px;
+  padding: 0;
 }
 
 .logo {
@@ -801,6 +818,7 @@ const logout = () => {
   font-size: 20px;
   font-weight: 600;
   color: var(--primary-color);
+  margin-left: -20px;
 }
 
 .logo-icon {
@@ -814,7 +832,7 @@ const logout = () => {
 
 .nav-menu {
   flex: 1;
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 24px;
 }
 
