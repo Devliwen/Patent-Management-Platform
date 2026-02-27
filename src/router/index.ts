@@ -170,8 +170,9 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   // 设置页面标题
   if (to.meta.title) {
-    const appTitle = import.meta.env.VITE_APP_TITLE || '高校知识产权运营服务平台'
-    document.title = `${to.meta.title} - ${appTitle}`
+    document.title = `${to.meta.title} - 我的知识产权`
+  } else {
+    document.title = '我的知识产权'
   }
 
   const token = localStorage.getItem('token')

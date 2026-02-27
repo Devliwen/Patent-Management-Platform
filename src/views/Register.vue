@@ -2,7 +2,7 @@
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-header">
-        <h1 class="auth-title">高校知识产权运营服务平台</h1>
+        <h1 class="auth-title">我的知识产权</h1>
         <p class="auth-subtitle">创建您的账号</p>
       </div>
 

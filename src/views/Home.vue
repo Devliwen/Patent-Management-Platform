@@ -43,9 +43,9 @@
           <div class="container">
             <div class="header-content">
               <div class="logo">
-                <el-icon class="logo-icon"><Cpu /></el-icon>
-                <span class="logo-text">高校知识产权运营服务平台</span>
-              </div>
+                  <el-icon class="logo-icon"><Cpu /></el-icon>
+                  <span class="logo-text">我的知识产权</span>
+                </div>
               
               <nav class="nav-menu">
                 <el-menu mode="horizontal" :default-active="activeNav" class="home-nav" @select="handleNavSelect">
@@ -123,9 +123,9 @@
           <section class="home-banner">
             <div class="container">
               <div class="banner-content">
-                <h2 class="banner-title">连接知识产权，推动创新发展</h2>
-                <p class="banner-description">
-                  高校知识产权运营服务平台，整合专利资源、专家资源，
+                <h2 class="banner-title animate-up">我的知识产权</h2>
+                <p class="banner-description animate-up delay-100">
+                  一站式知识产权管理与服务平台，整合专利资源、专家资源，
                   实现知识产权成果的高效转化与价值最大化。
                 </p>
                 <div class="banner-actions">
@@ -225,7 +225,7 @@
               <div class="footer-section">
                 <div class="logo">
                   <el-icon class="logo-icon"><Cpu /></el-icon>
-                  <span class="logo-text">高校知识产权运营服务平台</span>
+                  <span class="logo-text">我的知识产权</span>
                 </div>
                 <p class="footer-description">
                   致力于推动高校知识产权成果转化，促进产学研一体化发展，
@@ -275,7 +275,7 @@
             </div>
             
             <div class="footer-bottom">
-              <p>&copy; 2026 高校知识产权运营服务平台. All Rights Reserved.</p>
+              <p>&copy; 2026 我的知识产权. All Rights Reserved.</p>
             </div>
           </div>
         </footer>
