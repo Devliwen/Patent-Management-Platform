@@ -12,44 +12,16 @@
               :http-request="uploadAvatar"
               accept="image/*"
             >
-              <img v-if="userInfo?.userProfile?.avatar" :src="userInfo?.userProfile?.avatar" class="avatar" />
+              <img v-if="userInfo?.profile?.avatarUrl" :src="userInfo?.profile?.avatarUrl" class="avatar" />
               <el-avatar v-else :size="100" :style="{ backgroundColor: '#409eff' }" class="avatar-placeholder">
-                {{ getUserInitial(userInfo?.userProfile?.nickname || userInfo?.userAccount?.username || '用户') }}
+                {{ getUserInitial(userInfo?.profile?.nickname || userInfo?.user?.username || '用户') }}
               </el-avatar>
             </el-upload>
             <div class="user-info-basic">
-              <h3>{{ userInfo?.userProfile?.nickname || userInfo?.userAccount?.username || '未登录用户' }}</h3>
-              <p class="username">@{{ userInfo?.userAccount?.username || 'unknown' }}</p>
-              <el-tag type="info" size="small" style="margin-top: 8px;">{{ userInfo?.userAccount?.role || '未知角色' }}</el-tag>
-            </div>
+            <h3>{{ userInfo?.profile?.nickname || userInfo?.user?.username || '未登录用户' }}</h3>
+            <p class="username">@{{ userInfo?.user?.username || 'unknown' }}</p>
           </div>
-          
-          <el-divider />
-          
-          <div class="user-details">
-            <div class="detail-item">
-              <el-icon><User /></el-icon>
-              <span>{{ userInfo?.userProfile?.realName || '未设置真实姓名' }}</span>
-            </div>
-            <div class="detail-item">
-              <el-icon><Message /></el-icon>
-              <span>{{ userInfo?.userAccount?.email || '未设置邮箱' }}</span>
-            </div>
-            <div class="detail-item">
-              <el-icon><Phone /></el-icon>
-              <span>{{ userInfo?.userAccount?.phone || '未设置手机号' }}</span>
-            </div>
-            <div class="detail-item" v-if="userInfo?.userProfile?.gender">
-              <el-icon><Female v-if="userInfo?.userProfile?.gender === 'female'" />
-                         <Male v-else-if="userInfo?.userProfile?.gender === 'male'" />
-                         <User v-else /></el-icon>
-              <span>{{ getGenderText(userInfo?.userProfile?.gender || '') }}</span>
-            </div>
-            <div class="detail-item" v-if="userInfo?.userProfile?.birthDate">
-              <el-icon><Calendar /></el-icon>
-              <span>{{ formatDate(userInfo?.userProfile?.birthDate || '') }}</span>
-            </div>
-          </div>
+        </div>
         </el-card>
       </el-col>
 
@@ -72,187 +44,27 @@
             label-width="100px"
             v-loading="loading"
           >
-            <el-tabs v-model="activeTab" class="profile-tabs">
-              <el-tab-pane label="基本信息" name="basic">
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="用户名" prop="username">
-                      <el-input v-model="editForm.username" disabled />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="角色" prop="role">
-                      <el-input v-model="editForm.role" disabled />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="昵称" prop="nickname">
-                      <el-input v-model="editForm.nickname" :disabled="!isEditing" placeholder="请输入昵称" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="真实姓名" prop="realName">
-                      <el-input v-model="editForm.realName" :disabled="!isEditing" placeholder="请输入真实姓名" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="性别" prop="gender">
-                      <el-select v-model="editForm.gender" :disabled="!isEditing" placeholder="请选择性别" style="width: 100%">
-                        <el-option label="男" value="male" />
-                        <el-option label="女" value="female" />
-                        <el-option label="其他" value="other" />
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="生日" prop="birthDate">
-                      <el-date-picker
-                        v-model="editForm.birthDate"
-                        :disabled="!isEditing"
-                        type="date"
-                        placeholder="选择生日"
-                        format="YYYY-MM-DD"
-                        value-format="YYYY-MM-DD"
-                        style="width: 100%"
-                      />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-form-item label="个人简介" prop="bio">
-                  <el-input 
-                    v-model="editForm.bio" 
-                    :disabled="!isEditing"
-                    type="textarea" 
-                    :rows="3" 
-                    placeholder="请输入个人简介"
-                  />
-                </el-form-item>
-              </el-tab-pane>
-              
-              <el-tab-pane label="联系方式" name="contact">
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="邮箱" prop="email">
-                      <el-input v-model="editForm.email" :disabled="!isEditing" placeholder="请输入邮箱" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="手机号" prop="phone">
-                      <el-input v-model="editForm.phone" :disabled="!isEditing" placeholder="请输入手机号" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                
-                <el-form-item label="地址" prop="address">
-                  <el-input 
-                    v-model="editForm.address" 
-                    :disabled="!isEditing"
-                    type="textarea" 
-                    :rows="2" 
-                    placeholder="请输入地址"
-                  />
-                </el-form-item>
-                
-                <el-form-item label="网站" prop="website">
-                  <el-input 
-                    v-model="editForm.website" 
-                    :disabled="!isEditing"
-                    placeholder="请输入个人网站或博客地址"
-                  />
-                </el-form-item>
-              </el-tab-pane>
-              
-              <el-tab-pane label="专家信息" name="expert" v-if="userInfo?.expertProfile">
-                <el-alert
-                  title="专家资料"
-                  type="info"
-                  description="以下是您的专家资料信息，如需修改请联系管理员"
-                  :closable="false"
-                  show-icon
-                />
-                <div style="margin-top: 20px;">
-                  <el-row :gutter="20">
-                    <el-col :span="12">
-                      <el-form-item label="姓名">
-                        <el-input v-model="editForm.expertName" disabled />
-                      </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                      <el-form-item label="领域">
-                        <el-input v-model="editForm.expertField" disabled />
-                      </el-form-item>
-                    </el-col>
-                  </el-row>
-                  
-                  <el-form-item label="专长">
-                    <el-input 
-                      v-model="editForm.expertExpertise" 
-                      type="textarea" 
-                      :rows="2" 
-                      disabled
-                    />
-                  </el-form-item>
-                  
-                  <el-form-item label="成果">
-                    <el-input 
-                      v-model="editForm.expertAchievements" 
-                      type="textarea" 
-                      :rows="3" 
-                      disabled
-                    />
-                  </el-form-item>
-                </div>
-              </el-tab-pane>
-              
-              <el-tab-pane label="机构信息" name="organization" v-if="userInfo?.mainOrganization">
-                <el-alert
-                  title="主机构信息"
-                  type="info"
-                  description="以下是您的主机构信息，如需修改请联系管理员"
-                  :closable="false"
-                  show-icon
-                />
-                <div style="margin-top: 20px;">
-                  <el-row :gutter="20">
-                    <el-col :span="12">
-                      <el-form-item label="机构名称">
-                        <el-input v-model="editForm.orgName" disabled />
-                      </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                      <el-form-item label="机构类型">
-                        <el-input v-model="editForm.orgType" disabled />
-                      </el-form-item>
-                    </el-col>
-                  </el-row>
-                  
-                  <el-form-item label="机构描述">
-                    <el-input 
-                      v-model="editForm.orgDescription" 
-                      type="textarea" 
-                      :rows="2" 
-                      disabled
-                    />
-                  </el-form-item>
-                  
-                  <el-form-item label="联系信息">
-                    <el-input 
-                      v-model="editForm.orgContactInfo" 
-                      type="textarea" 
-                      :rows="2" 
-                      disabled
-                    />
-                  </el-form-item>
-                </div>
-              </el-tab-pane>
-            </el-tabs>
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="editForm.username" disabled />
+            </el-form-item>
+            
+            <el-form-item label="电话" prop="phone">
+              <el-input v-model="editForm.phone" :disabled="!isEditing" placeholder="请输入电话" />
+            </el-form-item>
+            
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="editForm.email" :disabled="!isEditing" placeholder="请输入邮箱" />
+            </el-form-item>
+            
+            <el-form-item label="个人简介" prop="bio">
+              <el-input 
+                v-model="editForm.bio" 
+                :disabled="!isEditing"
+                type="textarea" 
+                :rows="3" 
+                placeholder="请输入个人简介"
+              />
+            </el-form-item>
             
             <div class="form-actions" v-if="isEditing">
               <el-button @click="resetForm">重置</el-button>
@@ -271,7 +83,7 @@ import { ElMessage } from 'element-plus'
 import { profileApi } from '@/api'
 import type { FullUserInfo, UpdateUserProfileParams } from '@/types'
 import { 
-  User, Message, Phone, Female, Male, Calendar
+  User, Message, Phone, Female, Male, Calendar, Document, InfoFilled
 } from '@element-plus/icons-vue'
 
 // 用户信息
@@ -283,39 +95,16 @@ const activeTab = ref('basic')
 // 编辑表单
 const editForm = reactive<UpdateUserProfileParams & { 
   username?: string, 
-  role?: string, 
-  email?: string, 
   phone?: string,
-  expertName?: string,
-  expertField?: string,
-  expertExpertise?: string,
-  expertAchievements?: string,
-  orgName?: string,
-  orgType?: string,
-  orgDescription?: string,
-  orgContactInfo?: string
+  email?: string
 }>({
-  nickname: '',
-  realName: '',
-  gender: undefined,
-  birthDate: undefined,
-  bio: '',
-  address: '',
-  website: '',
-  socialLinks: {},
-  preferences: {}
+  bio: ''
 })
 
 const editFormRef = ref()
 
 // 表单验证规则
 const editRules = {
-  nickname: [
-    { min: 2, max: 20, message: '昵称长度应在2-20个字符之间', trigger: 'blur' }
-  ],
-  realName: [
-    { min: 2, max: 10, message: '真实姓名长度应在2-10个字符之间', trigger: 'blur' }
-  ],
   email: [
     { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
@@ -369,37 +158,14 @@ const loadUserInfo = async () => {
     userInfo.value = data
     
     // 初始化编辑表单
-    editForm.nickname = data?.userProfile?.nickname || ''
-    editForm.realName = data?.userProfile?.realName || ''
-    editForm.gender = data?.userProfile?.gender
-    editForm.birthDate = data?.userProfile?.birthDate || undefined
-    editForm.bio = data?.userProfile?.bio || ''
-    editForm.address = data?.userProfile?.address || ''
-    editForm.website = data?.userProfile?.website || ''
-    editForm.socialLinks = data?.userProfile?.socialLinks || {}
-    editForm.preferences = data?.userProfile?.preferences || {}
+    editForm.bio = data?.profile?.bio || ''
     
     // 用户账户信息
-    editForm.username = data?.userAccount?.username || ''
-    editForm.role = data?.userAccount?.role || ''
-    editForm.email = data?.userAccount?.email || ''
-    editForm.phone = data?.userAccount?.phone || ''
+    editForm.username = data?.user?.username || ''
+    editForm.phone = data?.user?.phone || ''
+    editForm.email = data?.user?.email || ''
     
-    // 专家信息
-    if (data?.expertProfile) {
-      editForm.expertName = data.expertProfile.name
-      editForm.expertField = data.expertProfile.field
-      editForm.expertExpertise = data.expertProfile.expertise
-      editForm.expertAchievements = data.expertProfile.achievements || ''
-    }
-    
-    // 机构信息
-    if (data?.mainOrganization) {
-      editForm.orgName = data.mainOrganization.name
-      editForm.orgType = data.mainOrganization.type
-      editForm.orgDescription = data.mainOrganization.description || ''
-      editForm.orgContactInfo = data.mainOrganization.contactInfo || ''
-    }
+
   } catch (error: any) {
     ElMessage.error(error.message || '获取用户信息失败')
     // 接口失败时，userInfo保持为null，模板会显示默认值
@@ -424,15 +190,7 @@ const submitForm = async () => {
     
     // 提取需要更新的字段
     const updateData: UpdateUserProfileParams = {
-      nickname: editForm.nickname,
-      realName: editForm.realName,
-      gender: editForm.gender,
-      birthDate: editForm.birthDate,
-      bio: editForm.bio,
-      address: editForm.address,
-      website: editForm.website,
-      socialLinks: editForm.socialLinks,
-      preferences: editForm.preferences
+      bio: editForm.bio
     }
     
     // 过滤掉空值
